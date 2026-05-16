@@ -2488,6 +2488,170 @@
         let currentSkinTab = 'all';
         let currentShopCategory = 'all';
 
+        // ==================== GameState 统一数据管理 ====================
+        class GameState {
+            static STORAGE_KEY = 'pierresCasinoData_v3';
+            static VERSION = 3;
+
+            static getDefaultData() {
+                return {
+                    _version: GameState.VERSION,
+                    chips: 100,
+                    history: [],
+                    ownedSounds: { jazz: false, electronic: false },
+                    ownedSkins: {
+                        'royal-purple': false, 'cyber-neon': false, 'dark-ghost': false,
+                        'golden-empire': false, 'aurora-dream': false, 'fire-hell': false,
+                        'diamond-luxury': false, 'cosmic-void': false, 'venom-toxic': false,
+                        'plasma-energy': false, 'inferno-blaze': false, 'ocean-abyss': false,
+                        'forest-mystic': false, 'desert-sands': false, 'volcano-magma': false,
+                        'storm-lightning': false, 'crystal-ice': false, 'nebula-cosmic': false
+                    },
+                    currentSkin: 'default',
+                    accelerateCount: 0,
+                    lastPayday: new Date().toISOString(),
+                    shopItemsOwned: [],
+                    dailyTasks: null, // 使用默认值
+                    lastCheckInDate: '',
+                    lastWheelTime: 0,
+                    miningStart: Date.now(),
+                    sharedCount: 0,
+                    dailyChallenges: null, // 使用默认值
+                    chestKeys: 0,
+                    achievements: null, // 使用默认值
+                    totalChipsEarned: 0,
+                    consecutiveHighLuck: 0,
+                    totalDraws: 0,
+                    skinsCollected: 0
+                };
+            }
+
+            static migrate(data) {
+                // v1 -> v2: 添加新字段
+                if (!data._version || data._version < 2) {
+                    data._version = 2;
+                }
+                // v2 -> v3: 标准化数据结构
+                if (data._version < 3) {
+                    // 确保 ownedSkins 包含所有皮肤
+                    const defaultSkins = GameState.getDefaultData().ownedSkins;
+                    Object.keys(defaultSkins).forEach(key => {
+                        if (data.ownedSkins && !(key in data.ownedSkins)) {
+                            data.ownedSkins[key] = false;
+                        }
+                    });
+                    data._version = 3;
+                }
+                return data;
+            }
+
+            static save() {
+                const data = {
+                    _version: GameState.VERSION,
+                    chips: chips,
+                    history: history,
+                    ownedSounds: ownedSounds,
+                    ownedSkins: ownedSkins,
+                    currentSkin: currentSkin,
+                    accelerateCount: accelerateCount,
+                    lastPayday: lastPayday.toISOString(),
+                    shopItemsOwned: shopItems.filter(item => item.owned && item.type !== 'consumable').map(item => item.id),
+                    dailyTasks: dailyTasks,
+                    lastCheckInDate: lastCheckInDate,
+                    lastWheelTime: lastWheelTime,
+                    miningStart: miningStart,
+                    sharedCount: sharedCount,
+                    dailyChallenges: dailyChallenges,
+                    chestKeys: chestKeys,
+                    achievements: achievements,
+                    totalChipsEarned: totalChipsEarned,
+                    consecutiveHighLuck: consecutiveHighLuck,
+                    totalDraws: totalDraws,
+                    skinsCollected: skinsCollected
+                };
+                localStorage.setItem(GameState.STORAGE_KEY, JSON.stringify(data));
+            }
+
+            static load() {
+                const saved = localStorage.getItem(GameState.STORAGE_KEY);
+                if (!saved) return false;
+
+                try {
+                    let data = JSON.parse(saved);
+
+                    // 数据迁移
+                    data = GameState.migrate(data);
+
+                    // 应用数据
+                    chips = data.chips || 100;
+                    history = data.history || [];
+                    ownedSounds = data.ownedSounds || { jazz: false, electronic: false };
+                    ownedSkins = data.ownedSkins || {};
+                    currentSkin = data.currentSkin || 'default';
+                    accelerateCount = data.accelerateCount || 0;
+                    lastPayday = new Date(data.lastPayday || new Date());
+
+                    // 更新商店物品状态
+                    if (data.shopItemsOwned) {
+                        shopItems.forEach(item => {
+                            if (item.type !== 'consumable') {
+                                item.owned = data.shopItemsOwned.includes(item.id);
+                            } else {
+                                item.owned = false;
+                            }
+                        });
+                    }
+
+                    // 更新皮肤锁定状态
+                    Object.keys(skins).forEach(skinId => {
+                        if (skinId !== 'default') {
+                            skins[skinId].locked = !ownedSkins[skinId];
+                        }
+                    });
+
+                    // 多元化筹码获取系统数据
+                    if (data.dailyTasks) {
+                        dailyTasks = { ...dailyTasks, ...data.dailyTasks };
+                    }
+                    lastCheckInDate = data.lastCheckInDate || '';
+                    lastWheelTime = data.lastWheelTime || 0;
+                    miningStart = data.miningStart || Date.now();
+                    sharedCount = data.sharedCount || 0;
+                    if (data.dailyChallenges) {
+                        dailyChallenges = { ...dailyChallenges, ...data.dailyChallenges };
+                    }
+                    chestKeys = data.chestKeys || 0;
+
+                    // 成就系统数据
+                    if (data.achievements) {
+                        Object.keys(achievements).forEach(key => {
+                            if (data.achievements[key]) {
+                                achievements[key] = { ...achievements[key], ...data.achievements[key] };
+                            }
+                        });
+                    }
+                    totalChipsEarned = data.totalChipsEarned || 0;
+                    consecutiveHighLuck = data.consecutiveHighLuck || 0;
+                    totalDraws = data.totalDraws || 0;
+                    skinsCollected = data.skinsCollected || Object.values(ownedSkins).filter(v => v).length;
+
+                    return true;
+                } catch (e) {
+                    console.error('加载数据失败:', e);
+                    return false;
+                }
+            }
+        }
+
+        // 兼容旧的函数调用
+        function saveData() {
+            GameState.save();
+        }
+
+        function loadData() {
+            return GameState.load();
+        }
+
         // ==================== 连抽暴击系统 ====================
         let consecutiveDraws = 0; // 连续抽卡次数
         let comboLevel = 0; // 当前连击等级：0=无，1=小暴击，2=大暴击，3=赌神附体
@@ -5191,106 +5355,9 @@
             renderShopItems();
         }
 
-        // 数据保存功能
-        function saveData() {
-            const data = {
-                chips: chips,
-                history: history,
-                ownedSounds: ownedSounds,
-                ownedSkins: ownedSkins,
-                currentSkin: currentSkin,
-                accelerateCount: accelerateCount,
-                lastPayday: lastPayday.toISOString(),
-                shopItemsOwned: shopItems.filter(item => item.owned && item.type !== 'consumable').map(item => item.id),
-                // 多元化筹码获取系统数据
-                dailyTasks: dailyTasks,
-                lastCheckInDate: lastCheckInDate,
-                lastWheelTime: lastWheelTime,
-                miningStart: miningStart,
-                sharedCount: sharedCount,
-                dailyChallenges: dailyChallenges,
-                chestKeys: chestKeys,
-                // 成就系统数据
-                achievements: achievements,
-                totalChipsEarned: totalChipsEarned,
-                consecutiveHighLuck: consecutiveHighLuck,
-                totalDraws: totalDraws,
-                skinsCollected: skinsCollected
-            };
-            localStorage.setItem('pierresCasinoData', JSON.stringify(data));
-        }
+        // 数据保存功能 - 已迁移到 GameState.save()
 
-        // 数据加载功能
-        function loadData() {
-            const saved = localStorage.getItem('pierresCasinoData');
-            if (!saved) return false;
-
-            try {
-                const data = JSON.parse(saved);
-
-                chips = data.chips || 100;
-                history = data.history || [];
-                ownedSounds = data.ownedSounds || { jazz: false, electronic: false };
-                ownedSkins = data.ownedSkins || { 'royal-purple': false, 'cyber-neon': false };
-                currentSkin = data.currentSkin || 'default';
-                accelerateCount = data.accelerateCount || 0;
-                lastPayday = new Date(data.lastPayday || new Date());
-
-                // 更新商店物品状态（道具类商品除外）
-                if (data.shopItemsOwned) {
-                    shopItems.forEach(item => {
-                        // 道具类商品不设置 owned 标志，可以重复购买
-                        if (item.type !== 'consumable') {
-                            item.owned = data.shopItemsOwned.includes(item.id);
-                        } else {
-                            item.owned = false;
-                        }
-                    });
-                }
-
-                // 更新皮肤锁定状态
-                Object.keys(skins).forEach(skinId => {
-                    if (skinId !== 'default') {
-                        skins[skinId].locked = !ownedSkins[skinId];
-                    }
-                });
-
-                // 恢复多元化筹码获取系统数据
-                dailyTasks = data.dailyTasks || {
-                    watchAd: { done: false, reward: 10, name: '观看广告', desc: '观看 1 条广告' },
-                    share: { done: false, reward: 20, name: '分享游戏', desc: '分享给好友' },
-                    login: { done: false, reward: 30, name: '每日登录', desc: '每日首次登录' }
-                };
-                lastCheckInDate = data.lastCheckInDate || '';
-                lastWheelTime = data.lastWheelTime || 0;
-                miningStart = data.miningStart || Date.now();
-                sharedCount = data.sharedCount || 0;
-                dailyChallenges = data.dailyChallenges || {
-                    speed: { used: 0, max: 3, name: '速抽挑战', desc: '10 秒内抽 3 次' },
-                    accuracy: { used: 0, max: 3, name: '精准挑战', desc: '连续 3 次中运以上' },
-                    combo: { used: 0, max: 3, name: '连击挑战', desc: '单次达成 10 连击' }
-                };
-                chestKeys = data.chestKeys || 0;
-
-                // 恢复成就系统数据
-                if (data.achievements) {
-                    Object.keys(achievements).forEach(key => {
-                        if (data.achievements[key]) {
-                            achievements[key] = { ...achievements[key], ...data.achievements[key] };
-                        }
-                    });
-                }
-                totalChipsEarned = data.totalChipsEarned || 0;
-                consecutiveHighLuck = data.consecutiveHighLuck || 0;
-                totalDraws = data.totalDraws || 0;
-                skinsCollected = data.skinsCollected || Object.values(ownedSkins).filter(v => v).length;
-
-                return true;
-            } catch (e) {
-                console.error('加载数据失败:', e);
-                return false;
-            }
-        }
+        // 数据加载功能 - 已迁移到 GameState.load()
 
         // 初始化显示
         const dataLoaded = loadData(); // 尝试加载数据
