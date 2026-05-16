@@ -2658,13 +2658,448 @@
             }
         }
 
-        // ==================== 特效系统 ====================
+        // ==================== 通用粒子特效引擎 ====================
+        class ParticleEffectEngine {
+            constructor(canvas, ctx) {
+                this.canvas = canvas;
+                this.ctx = ctx;
+                this.particles = [];
+                this.animationId = null;
+                this.time = 0;
+                this.customState = {};
+                this.preset = null;
+                this.presetId = null;
+            }
+
+            stop() {
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+                this.particles = [];
+                this.customState = {};
+                this.time = 0;
+                if (this.ctx && this.canvas) {
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                }
+            }
+
+            start(presetId) {
+                const preset = ParticleEffectEngine.PRESETS[presetId];
+                if (!preset) return;
+
+                this.stop();
+                this.presetId = presetId;
+                this.preset = preset;
+                this.particles = [];
+                this.time = 0;
+                this.customState = preset.initState ? preset.initState(this.canvas.width, this.canvas.height) : {};
+
+                if (preset.createParticles) {
+                    this.particles = preset.createParticles(this.canvas.width, this.canvas.height);
+                }
+
+                this._animate();
+            }
+
+            _animate() {
+                const preset = this.preset;
+                const ctx = this.ctx;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+
+                this.time += preset.timeStep || 0.02;
+
+                ctx.clearRect(0, 0, width, height);
+
+                if (preset.drawBackground) {
+                    preset.drawBackground(ctx, width, height, this.time, this.customState, this.particles);
+                }
+
+                if (preset.updateParticles) {
+                    preset.updateParticles(this.particles, width, height, this.time, this.customState);
+                }
+
+                if (preset.drawParticles) {
+                    preset.drawParticles(ctx, this.particles, this.time, this.customState);
+                }
+
+                this.animationId = requestAnimationFrame(() => this._animate());
+            }
+        }
+
+        // ==================== 特效预设定义 ====================
+        ParticleEffectEngine.PRESETS = {
+            'royal': {
+                timeStep: 0.02,
+                createParticles: (w, h) => {
+                    const particles = [];
+                    for (let i = 0; i < 50; i++) {
+                        particles.push({
+                            x: Math.random() * w,
+                            y: Math.random() * h - h,
+                            size: Math.random() * 3 + 1,
+                            speed: Math.random() * 2 + 1,
+                            opacity: Math.random() * 0.5 + 0.3,
+                            type: 'gold'
+                        });
+                    }
+                    return particles;
+                },
+                drawBackground: (ctx, w, h, time) => {
+                    const glowSize = Math.sin(time) * 50 + 200;
+                    const gradient = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, glowSize);
+                    gradient.addColorStop(0, 'rgba(212, 175, 55, 0.1)');
+                    gradient.addColorStop(0.5, 'rgba(189, 76, 255, 0.05)');
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, w, h);
+                },
+                updateParticles: (particles, w, h) => {
+                    particles.forEach(p => {
+                        p.y += p.speed;
+                        if (p.y > h) {
+                            p.y = -10;
+                            p.x = Math.random() * w;
+                        }
+                    });
+                },
+                drawParticles: (ctx, particles) => {
+                    particles.forEach(p => {
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(212, 175, 55, ${p.opacity})`;
+                        ctx.fill();
+
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(212, 175, 55, ${p.opacity * 0.3})`;
+                        ctx.fill();
+                    });
+                }
+            },
+
+            'cyber': {
+                timeStep: 0.02,
+                initState: (w, h) => ({ scanLineY: 0, scanDirection: 1 }),
+                createParticles: (w, h) => {
+                    const particles = [];
+                    for (let i = 0; i < 30; i++) {
+                        particles.push({
+                            x: Math.random() * w,
+                            y: Math.random() * h,
+                            size: Math.random() * 2 + 1,
+                            speed: Math.random() * 3 + 2,
+                            opacity: Math.random() * 0.6 + 0.2,
+                            type: 'data'
+                        });
+                    }
+                    return particles;
+                },
+                drawBackground: (ctx, w, h, time, state) => {
+                    state.scanLineY += 2 * state.scanDirection;
+                    if (state.scanLineY >= h - 50 || state.scanLineY <= 50) {
+                        state.scanDirection *= -1;
+                    }
+
+                    const scanGradient = ctx.createLinearGradient(0, state.scanLineY - 20, 0, state.scanLineY + 20);
+                    scanGradient.addColorStop(0, 'transparent');
+                    scanGradient.addColorStop(0.5, 'rgba(0, 255, 255, 0.3)');
+                    scanGradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = scanGradient;
+                    ctx.fillRect(0, state.scanLineY - 20, w, 40);
+
+                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.05)';
+                    ctx.lineWidth = 1;
+                    for (let x = 0; x < w; x += 50) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, h);
+                        ctx.stroke();
+                    }
+                    for (let y = 0; y < h; y += 50) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(w, y);
+                        ctx.stroke();
+                    }
+                },
+                updateParticles: (particles, w, h) => {
+                    particles.forEach(p => {
+                        p.y += p.speed;
+                        if (p.y > h) {
+                            p.y = 0;
+                            p.x = Math.random() * w;
+                        }
+                    });
+                },
+                drawParticles: (ctx, particles) => {
+                    particles.forEach(p => {
+                        const chars = '01';
+                        const char = chars[Math.floor(Math.random() * chars.length)];
+                        ctx.font = `${p.size * 10}px monospace`;
+                        ctx.fillStyle = `rgba(0, 255, 255, ${p.opacity})`;
+                        ctx.fillText(char, p.x, p.y);
+                    });
+                }
+            },
+
+            'ghost': {
+                timeStep: 0.02,
+                createParticles: (w, h) => {
+                    const particles = [];
+                    for (let i = 0; i < 40; i++) {
+                        particles.push({
+                            x: Math.random() * w,
+                            y: Math.random() * h,
+                            size: Math.random() * 100 + 50,
+                            speedX: Math.random() * 1 - 0.5,
+                            speedY: Math.random() * 1 - 0.5,
+                            opacity: Math.random() * 0.1 + 0.05,
+                            type: 'smoke'
+                        });
+                    }
+                    return particles;
+                },
+                drawBackground: (ctx, w, h, time) => {
+                    const glowSize = Math.sin(time * 0.5) * 30 + 150;
+                    const gradient = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, glowSize);
+                    gradient.addColorStop(0, 'rgba(255, 20, 20, 0.08)');
+                    gradient.addColorStop(0.5, 'rgba(100, 0, 0, 0.03)');
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, w, h);
+                },
+                updateParticles: (particles, w, h) => {
+                    particles.forEach(p => {
+                        p.x += p.speedX;
+                        p.y += p.speedY;
+                        if (p.x < -p.size || p.x > w + p.size) p.speedX *= -1;
+                        if (p.y < -p.size || p.y > h + p.size) p.speedY *= -1;
+                    });
+                },
+                drawParticles: (ctx, particles) => {
+                    particles.forEach(p => {
+                        const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+                        gradient.addColorStop(0, `rgba(50, 50, 50, ${p.opacity})`);
+                        gradient.addColorStop(0.5, `rgba(30, 30, 30, ${p.opacity * 0.5})`);
+                        gradient.addColorStop(1, 'transparent');
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                }
+            },
+
+            'gold': {
+                timeStep: 0.03,
+                createParticles: (w, h) => {
+                    const particles = [];
+                    for (let i = 0; i < 30; i++) {
+                        particles.push({
+                            x: Math.random() * w,
+                            y: Math.random() * h,
+                            size: Math.random() * 4 + 2,
+                            angle: Math.random() * Math.PI * 2,
+                            speed: Math.random() * 0.02 + 0.01,
+                            opacity: Math.random() * 0.6 + 0.4,
+                            type: 'diamond'
+                        });
+                    }
+                    return particles;
+                },
+                drawBackground: (ctx, w, h, time) => {
+                    const glowOpacity = (Math.sin(time) + 1) / 2 * 0.1 + 0.05;
+                    const gradient = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, w/2);
+                    gradient.addColorStop(0, `rgba(255, 215, 0, ${glowOpacity})`);
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, w, h);
+                },
+                updateParticles: (particles, w, h, time) => {
+                    particles.forEach(p => {
+                        p.angle += p.speed;
+                    });
+                },
+                drawParticles: (ctx, particles, time) => {
+                    particles.forEach(p => {
+                        const centerX = ctx.canvas.width / 2 + Math.cos(p.angle) * 100;
+                        const centerY = ctx.canvas.height / 2 + Math.sin(p.angle) * 100;
+
+                        ctx.beginPath();
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (Math.PI * 2 / 8) * i + time;
+                            const r = i % 2 === 0 ? p.size * 3 : p.size;
+                            const x = centerX + Math.cos(angle) * r;
+                            const y = centerY + Math.sin(angle) * r;
+                            if (i === 0) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        }
+                        ctx.closePath();
+                        ctx.fillStyle = `rgba(255, 215, 0, ${p.opacity * 0.5})`;
+                        ctx.fill();
+                    });
+                }
+            },
+
+            'aurora': {
+                timeStep: 0.01,
+                createParticles: (w, h) => {
+                    const particles = [];
+                    for (let i = 0; i < 60; i++) {
+                        particles.push({
+                            x: Math.random() * w,
+                            y: Math.random() * h,
+                            size: Math.random() * 2 + 1,
+                            speed: Math.random() * 1 + 0.5,
+                            opacity: Math.random() * 0.5 + 0.3,
+                            type: 'snow'
+                        });
+                    }
+                    return particles;
+                },
+                drawBackground: (ctx, w, h, time) => {
+                    const auroraColors = [
+                        'rgba(100, 200, 255, 0.15)',
+                        'rgba(100, 255, 200, 0.15)',
+                        'rgba(200, 150, 255, 0.15)'
+                    ];
+
+                    for (let i = 0; i < 3; i++) {
+                        const gradient = ctx.createLinearGradient(0, h * 0.2 + Math.sin(time + i) * 50, 0, h * 0.6 + Math.sin(time + i + 1) * 50);
+                        gradient.addColorStop(0, 'transparent');
+                        gradient.addColorStop(0.5, auroraColors[i]);
+                        gradient.addColorStop(1, 'transparent');
+
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.moveTo(0, h * 0.3 + Math.sin(time + i) * 100);
+                        for (let x = 0; x <= w; x += 50) {
+                            ctx.lineTo(x, h * 0.4 + Math.sin(time * 2 + x * 0.01 + i) * 80);
+                        }
+                        ctx.lineTo(w, h * 0.7);
+                        ctx.lineTo(0, h * 0.7);
+                        ctx.fill();
+                    }
+                },
+                updateParticles: (particles, w, h) => {
+                    particles.forEach(p => {
+                        p.y += p.speed;
+                        if (p.y > h) {
+                            p.y = -10;
+                            p.x = Math.random() * w;
+                        }
+                    });
+                },
+                drawParticles: (ctx, particles) => {
+                    particles.forEach(p => {
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+                        ctx.fill();
+                    });
+                }
+            },
+
+            'fire': {
+                timeStep: 0.05,
+                createParticles: (w, h) => {
+                    const particles = [];
+                    for (let i = 0; i < 80; i++) {
+                        particles.push({
+                            x: Math.random() * w,
+                            y: h + Math.random() * 100,
+                            size: Math.random() * 3 + 1,
+                            speed: Math.random() * 3 + 2,
+                            angle: Math.random() * 0.5 - 0.25,
+                            opacity: Math.random() * 0.7 + 0.3,
+                            life: Math.random() * 100 + 50,
+                            type: 'spark'
+                        });
+                    }
+                    return particles;
+                },
+                drawBackground: (ctx, w, h, time) => {
+                    const fireGradient = ctx.createLinearGradient(0, h - 200, 0, h);
+                    fireGradient.addColorStop(0, 'transparent');
+                    fireGradient.addColorStop(0.5, `rgba(255, 100, 0, ${0.1 + Math.sin(time) * 0.05})`);
+                    fireGradient.addColorStop(1, `rgba(255, 50, 0, ${0.2 + Math.sin(time * 2) * 0.1})`);
+                    ctx.fillStyle = fireGradient;
+                    ctx.fillRect(0, h - 200, w, 200);
+                },
+                updateParticles: (particles, w, h) => {
+                    particles.forEach(p => {
+                        p.y -= p.speed;
+                        p.x += p.angle * p.speed;
+                        p.life--;
+                        p.opacity = p.life / 150;
+
+                        if (p.life <= 0 || p.y < -50 || p.x < -50 || p.x > w + 50) {
+                            p.y = h + Math.random() * 100;
+                            p.x = Math.random() * w;
+                            p.life = Math.random() * 100 + 50;
+                            p.opacity = Math.random() * 0.7 + 0.3;
+                        }
+                    });
+                },
+                drawParticles: (ctx, particles) => {
+                    particles.forEach(p => {
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        const sparkColor = p.opacity > 0.7 ? '#ffff00' : '#ff6600';
+                        ctx.fillStyle = `${sparkColor}${Math.floor(p.opacity * 255).toString(16).padStart(2, '0')}`;
+                        ctx.fill();
+
+                        if (p.opacity > 0.3) {
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y + p.speed * 2, p.size * 0.5, 0, Math.PI * 2);
+                            ctx.fillStyle = `rgba(255, 100, 0, ${p.opacity * 0.5})`;
+                            ctx.fill();
+                        }
+                    });
+                }
+            }
+        };
+
+        // ==================== 特效系统变量 ====================
         let effectCanvas = null;
         let effectCtx = null;
-        let effectAnimationId = null;
         let effectParticles = [];
+        let particleEngine = null;
 
-        // ==================== 音效系统（延迟初始化）====================
+        function initEffectCanvas() {
+            effectCanvas = document.getElementById('effectCanvas');
+            effectCtx = effectCanvas.getContext('2d');
+            particleEngine = new ParticleEffectEngine(effectCanvas, effectCtx);
+            resizeEffectCanvas();
+            window.addEventListener('resize', resizeEffectCanvas);
+        }
+
+        function resizeEffectCanvas() {
+            if (effectCanvas) {
+                effectCanvas.width = window.innerWidth;
+                effectCanvas.height = window.innerHeight;
+            }
+        }
+
+        function stopEffect() {
+            if (particleEngine) {
+                particleEngine.stop();
+            }
+        }
+
+        function startEffectForSkin(skinId) {
+            const skin = skins[skinId];
+            if (!skin || skin.specialEffects === 'none') {
+                stopEffect();
+                return;
+            }
+
+            if (particleEngine) {
+                particleEngine.start(skin.specialEffects);
+            }
+        }
         let audioContext = null;
 
         /**
@@ -3779,448 +4214,7 @@
             }
         }
 
-        // 皇家紫特效：金色粒子飘落 + 呼吸光晕
-        function startRoyalEffect() {
-            stopEffect();
-            const width = effectCanvas.width;
-            const height = effectCanvas.height;
-
-            // 创建金色粒子
-            for (let i = 0; i < 50; i++) {
-                effectParticles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height - height,
-                    size: Math.random() * 3 + 1,
-                    speed: Math.random() * 2 + 1,
-                    opacity: Math.random() * 0.5 + 0.3,
-                    type: 'gold'
-                });
-            }
-
-            let time = 0;
-
-            function animate() {
-                time += 0.02;
-                effectCtx.clearRect(0, 0, width, height);
-
-                // 绘制呼吸光晕
-                const glowSize = Math.sin(time) * 50 + 200;
-                const gradient = effectCtx.createRadialGradient(
-                    width / 2, height / 2, 0,
-                    width / 2, height / 2, glowSize
-                );
-                gradient.addColorStop(0, 'rgba(212, 175, 55, 0.1)');
-                gradient.addColorStop(0.5, 'rgba(189, 76, 255, 0.05)');
-                gradient.addColorStop(1, 'transparent');
-                effectCtx.fillStyle = gradient;
-                effectCtx.fillRect(0, 0, width, height);
-
-                // 绘制金色粒子
-                effectParticles.forEach(p => {
-                    p.y += p.speed;
-                    if (p.y > height) {
-                        p.y = -10;
-                        p.x = Math.random() * width;
-                    }
-
-                    effectCtx.beginPath();
-                    effectCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                    effectCtx.fillStyle = `rgba(212, 175, 55, ${p.opacity})`;
-                    effectCtx.fill();
-
-                    // 添加光晕
-                    effectCtx.beginPath();
-                    effectCtx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
-                    effectCtx.fillStyle = `rgba(212, 175, 55, ${p.opacity * 0.3})`;
-                    effectCtx.fill();
-                });
-
-                effectAnimationId = requestAnimationFrame(animate);
-            }
-
-            animate();
-        }
-
-        // 赛博霓虹特效：霓虹扫描线 + 数据流
-        function startCyberEffect() {
-            stopEffect();
-            const width = effectCanvas.width;
-            const height = effectCanvas.height;
-
-            // 创建数据流粒子
-            for (let i = 0; i < 30; i++) {
-                effectParticles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    size: Math.random() * 2 + 1,
-                    speed: Math.random() * 3 + 2,
-                    opacity: Math.random() * 0.6 + 0.2,
-                    type: 'data'
-                });
-            }
-
-            let scanLineY = 0;
-            let scanDirection = 1;
-
-            function animate() {
-                effectCtx.clearRect(0, 0, width, height);
-
-                // 霓虹扫描线
-                scanLineY += 2 * scanDirection;
-                if (scanLineY >= height - 50 || scanLineY <= 50) {
-                    scanDirection *= -1;
-                }
-
-                const scanGradient = effectCtx.createLinearGradient(
-                    0, scanLineY - 20, 0, scanLineY + 20
-                );
-                scanGradient.addColorStop(0, 'transparent');
-                scanGradient.addColorStop(0.5, 'rgba(0, 255, 255, 0.3)');
-                scanGradient.addColorStop(1, 'transparent');
-                effectCtx.fillStyle = scanGradient;
-                effectCtx.fillRect(0, scanLineY - 20, width, 40);
-
-                // 绘制数据流
-                effectParticles.forEach(p => {
-                    p.y += p.speed;
-                    if (p.y > height) {
-                        p.y = 0;
-                        p.x = Math.random() * width;
-                    }
-
-                    // 绘制二进制字符效果
-                    const chars = '01';
-                    const char = chars[Math.floor(Math.random() * chars.length)];
-                    effectCtx.font = `${p.size * 10}px monospace`;
-                    effectCtx.fillStyle = `rgba(0, 255, 255, ${p.opacity})`;
-                    effectCtx.fillText(char, p.x, p.y);
-                });
-
-                // 网格线
-                effectCtx.strokeStyle = 'rgba(0, 255, 255, 0.05)';
-                effectCtx.lineWidth = 1;
-                for (let x = 0; x < width; x += 50) {
-                    effectCtx.beginPath();
-                    effectCtx.moveTo(x, 0);
-                    effectCtx.lineTo(x, height);
-                    effectCtx.stroke();
-                }
-                for (let y = 0; y < height; y += 50) {
-                    effectCtx.beginPath();
-                    effectCtx.moveTo(0, y);
-                    effectCtx.lineTo(width, y);
-                    effectCtx.stroke();
-                }
-
-                effectAnimationId = requestAnimationFrame(animate);
-            }
-
-            animate();
-        }
-
-        // 暗夜幽灵特效：烟雾流动 + 血色光晕
-        function startGhostEffect() {
-            stopEffect();
-            const width = effectCanvas.width;
-            const height = effectCanvas.height;
-
-            // 创建烟雾粒子
-            for (let i = 0; i < 40; i++) {
-                effectParticles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    size: Math.random() * 100 + 50,
-                    speedX: Math.random() * 1 - 0.5,
-                    speedY: Math.random() * 1 - 0.5,
-                    opacity: Math.random() * 0.1 + 0.05,
-                    type: 'smoke'
-                });
-            }
-
-            let time = 0;
-
-            function animate() {
-                time += 0.02;
-                effectCtx.clearRect(0, 0, width, height);
-
-                // 血色光晕
-                const glowSize = Math.sin(time * 0.5) * 30 + 150;
-                const gradient = effectCtx.createRadialGradient(
-                    width / 2, height / 2, 0,
-                    width / 2, height / 2, glowSize
-                );
-                gradient.addColorStop(0, 'rgba(255, 20, 20, 0.08)');
-                gradient.addColorStop(0.5, 'rgba(100, 0, 0, 0.03)');
-                gradient.addColorStop(1, 'transparent');
-                effectCtx.fillStyle = gradient;
-                effectCtx.fillRect(0, 0, width, height);
-
-                // 绘制烟雾
-                effectParticles.forEach(p => {
-                    p.x += p.speedX;
-                    p.y += p.speedY;
-
-                    // 边界反弹
-                    if (p.x < -p.size || p.x > width + p.size) p.speedX *= -1;
-                    if (p.y < -p.size || p.y > height + p.size) p.speedY *= -1;
-
-                    const gradient = effectCtx.createRadialGradient(
-                        p.x, p.y, 0,
-                        p.x, p.y, p.size
-                    );
-                    gradient.addColorStop(0, `rgba(50, 50, 50, ${p.opacity})`);
-                    gradient.addColorStop(0.5, `rgba(30, 30, 30, ${p.opacity * 0.5})`);
-                    gradient.addColorStop(1, 'transparent');
-                    effectCtx.fillStyle = gradient;
-                    effectCtx.beginPath();
-                    effectCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                    effectCtx.fill();
-                });
-
-                effectAnimationId = requestAnimationFrame(animate);
-            }
-
-            animate();
-        }
-
-        // 黄金帝国特效：金光闪烁 + 钻石折射
-        function startGoldEffect() {
-            stopEffect();
-            const width = effectCanvas.width;
-            const height = effectCanvas.height;
-
-            // 创建钻石光芒粒子
-            for (let i = 0; i < 30; i++) {
-                effectParticles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    size: Math.random() * 4 + 2,
-                    angle: Math.random() * Math.PI * 2,
-                    speed: Math.random() * 0.02 + 0.01,
-                    opacity: Math.random() * 0.6 + 0.4,
-                    type: 'diamond'
-                });
-            }
-
-            let time = 0;
-
-            function animate() {
-                time += 0.03;
-                effectCtx.clearRect(0, 0, width, height);
-
-                // 绘制钻石光芒
-                effectParticles.forEach(p => {
-                    p.angle += p.speed;
-
-                    const centerX = width / 2 + Math.cos(p.angle) * 100;
-                    const centerY = height / 2 + Math.sin(p.angle) * 100;
-
-                    // 绘制星光
-                    effectCtx.beginPath();
-                    for (let i = 0; i < 8; i++) {
-                        const angle = (Math.PI * 2 / 8) * i + time;
-                        const r = i % 2 === 0 ? p.size * 3 : p.size;
-                        const x = centerX + Math.cos(angle) * r;
-                        const y = centerY + Math.sin(angle) * r;
-                        if (i === 0) effectCtx.moveTo(x, y);
-                        else effectCtx.lineTo(x, y);
-                    }
-                    effectCtx.closePath();
-                    effectCtx.fillStyle = `rgba(255, 215, 0, ${p.opacity * 0.5})`;
-                    effectCtx.fill();
-                });
-
-                // 金色光晕
-                const glowOpacity = (Math.sin(time) + 1) / 2 * 0.1 + 0.05;
-                const gradient = effectCtx.createRadialGradient(
-                    width / 2, height / 2, 0,
-                    width / 2, height / 2, width / 2
-                );
-                gradient.addColorStop(0, `rgba(255, 215, 0, ${glowOpacity})`);
-                gradient.addColorStop(1, 'transparent');
-                effectCtx.fillStyle = gradient;
-                effectCtx.fillRect(0, 0, width, height);
-
-                effectAnimationId = requestAnimationFrame(animate);
-            }
-
-            animate();
-        }
-
-        // 极光幻境特效：动态极光 + 雪花飘落
-        function startAuroraEffect() {
-            stopEffect();
-            const width = effectCanvas.width;
-            const height = effectCanvas.height;
-
-            // 创建雪花粒子
-            for (let i = 0; i < 60; i++) {
-                effectParticles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    size: Math.random() * 2 + 1,
-                    speed: Math.random() * 1 + 0.5,
-                    opacity: Math.random() * 0.5 + 0.3,
-                    type: 'snow'
-                });
-            }
-
-            let time = 0;
-
-            function animate() {
-                time += 0.01;
-                effectCtx.clearRect(0, 0, width, height);
-
-                // 绘制极光
-                const auroraColors = [
-                    'rgba(100, 200, 255, 0.15)',
-                    'rgba(100, 255, 200, 0.15)',
-                    'rgba(200, 150, 255, 0.15)'
-                ];
-
-                for (let i = 0; i < 3; i++) {
-                    const gradient = effectCtx.createLinearGradient(
-                        0, height * 0.2 + Math.sin(time + i) * 50,
-                        0, height * 0.6 + Math.sin(time + i + 1) * 50
-                    );
-                    gradient.addColorStop(0, 'transparent');
-                    gradient.addColorStop(0.5, auroraColors[i]);
-                    gradient.addColorStop(1, 'transparent');
-
-                    effectCtx.fillStyle = gradient;
-                    effectCtx.beginPath();
-                    effectCtx.moveTo(0, height * 0.3 + Math.sin(time + i) * 100);
-                    for (let x = 0; x <= width; x += 50) {
-                        effectCtx.lineTo(x, height * 0.4 + Math.sin(time * 2 + x * 0.01 + i) * 80);
-                    }
-                    effectCtx.lineTo(width, height * 0.7);
-                    effectCtx.lineTo(0, height * 0.7);
-                    effectCtx.fill();
-                }
-
-                // 绘制雪花
-                effectParticles.forEach(p => {
-                    p.y += p.speed;
-                    if (p.y > height) {
-                        p.y = -10;
-                        p.x = Math.random() * width;
-                    }
-
-                    effectCtx.beginPath();
-                    effectCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                    effectCtx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
-                    effectCtx.fill();
-                });
-
-                effectAnimationId = requestAnimationFrame(animate);
-            }
-
-            animate();
-        }
-
-        // 火焰地狱特效：动态火焰 + 火星飞溅
-        function startFireEffect() {
-            stopEffect();
-            const width = effectCanvas.width;
-            const height = effectCanvas.height;
-
-            // 创建火星粒子
-            for (let i = 0; i < 80; i++) {
-                effectParticles.push({
-                    x: Math.random() * width,
-                    y: height + Math.random() * 100,
-                    size: Math.random() * 3 + 1,
-                    speed: Math.random() * 3 + 2,
-                    angle: Math.random() * 0.5 - 0.25,
-                    opacity: Math.random() * 0.7 + 0.3,
-                    life: Math.random() * 100 + 50,
-                    type: 'spark'
-                });
-            }
-
-            let time = 0;
-
-            function animate() {
-                time += 0.05;
-                effectCtx.clearRect(0, 0, width, height);
-
-                // 底部火焰光晕
-                const fireGradient = effectCtx.createLinearGradient(
-                    0, height - 200, 0, height
-                );
-                fireGradient.addColorStop(0, 'transparent');
-                fireGradient.addColorStop(0.5, `rgba(255, 100, 0, ${0.1 + Math.sin(time) * 0.05})`);
-                fireGradient.addColorStop(1, `rgba(255, 50, 0, ${0.2 + Math.sin(time * 2) * 0.1})`);
-                effectCtx.fillStyle = fireGradient;
-                effectCtx.fillRect(0, height - 200, width, 200);
-
-                // 绘制火星
-                effectParticles.forEach(p => {
-                    p.y -= p.speed;
-                    p.x += p.angle * p.speed;
-                    p.life--;
-                    p.opacity = p.life / 150;
-
-                    if (p.life <= 0 || p.y < -50 || p.x < -50 || p.x > width + 50) {
-                        p.y = height + Math.random() * 100;
-                        p.x = Math.random() * width;
-                        p.life = Math.random() * 100 + 50;
-                        p.opacity = Math.random() * 0.7 + 0.3;
-                    }
-
-                    // 绘制火星
-                    effectCtx.beginPath();
-                    effectCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                    const sparkColor = p.opacity > 0.7 ? '#ffff00' : '#ff6600';
-                    effectCtx.fillStyle = `${sparkColor}${Math.floor(p.opacity * 255).toString(16).padStart(2, '0')}`;
-                    effectCtx.fill();
-
-                    // 拖尾效果
-                    if (p.opacity > 0.3) {
-                        effectCtx.beginPath();
-                        effectCtx.arc(p.x, p.y + p.speed * 2, p.size * 0.5, 0, Math.PI * 2);
-                        effectCtx.fillStyle = `rgba(255, 100, 0, ${p.opacity * 0.5})`;
-                        effectCtx.fill();
-                    }
-                });
-
-                effectAnimationId = requestAnimationFrame(animate);
-            }
-
-            animate();
-        }
-
-        // 根据皮肤类型启动对应特效
-        function startEffectForSkin(skinId) {
-            const skin = skins[skinId];
-            if (!skin || skin.specialEffects === 'none') {
-                stopEffect();
-                return;
-            }
-
-            switch(skin.specialEffects) {
-                case 'royal':
-                    startRoyalEffect();
-                    break;
-                case 'cyber':
-                    startCyberEffect();
-                    break;
-                case 'ghost':
-                    startGhostEffect();
-                    break;
-                case 'gold':
-                    startGoldEffect();
-                    break;
-                case 'aurora':
-                    startAuroraEffect();
-                    break;
-                case 'fire':
-                    startFireEffect();
-                    break;
-                default:
-                    stopEffect();
-            }
-        }
+        // ==================== 特效系统函数结束 ====================
 
         // 背景音乐系统
         function playJazzMusic() {
