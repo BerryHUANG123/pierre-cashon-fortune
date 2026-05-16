@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎰 皮尔卡松的牌运预测 🎰</title>
     <style>
+        /* ==================== 皮肤 CSS 变量 ==================== */
+        :root {
+            --skin-body-bg: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 40%, #0f0f1a 100%);
+            --skin-body-pattern: repeating-linear-gradient(45deg, transparent, transparent 50px, rgba(255, 215, 0, 0.02) 50px, rgba(255, 215, 0, 0.02) 100px);
+            --skin-container-bg: rgba(10, 10, 10, 0.85);
+            --skin-border-color: rgba(255, 215, 0, 0.4);
+            --skin-accent: #ffd700;
+            --skin-accent-rgb: 255, 215, 0;
+            --skin-card-bg: linear-gradient(145deg, #2a2a4a, #1a1a3a);
+            --skin-button-gradient: linear-gradient(135deg, #ffd700, #ff8c00);
+            --skin-glow: rgba(255, 215, 0, 0.1);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -13,9 +26,7 @@
 
         body {
             font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
-            background: 
-                radial-gradient(ellipse at center, rgba(255, 215, 0, 0.03) 0%, transparent 70%),
-                linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 40%, #0f0f1a 100%);
+            background: var(--skin-body-pattern), var(--skin-body-bg);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -32,14 +43,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: 
-                repeating-linear-gradient(
-                    45deg,
-                    transparent,
-                    transparent 50px,
-                    rgba(255, 215, 0, 0.02) 50px,
-                    rgba(255, 215, 0, 0.02) 100px
-                );
+            background: var(--skin-body-pattern);
             pointer-events: none;
             z-index: 0;
         }
@@ -83,14 +87,14 @@
         .container {
             text-align: center;
             padding: 40px;
-            background: rgba(10, 10, 10, 0.85);
+            background: var(--skin-container-bg);
             border-radius: 20px;
             backdrop-filter: blur(15px);
-            border: 2px solid rgba(255, 215, 0, 0.4);
+            border: 2px solid var(--skin-border-color);
             box-shadow: 
                 0 8px 32px rgba(0, 0, 0, 0.8),
-                inset 0 0 60px rgba(255, 215, 0, 0.05),
-                0 0 100px rgba(255, 215, 0, 0.1);
+                inset 0 0 60px rgba(var(--skin-accent-rgb), 0.05),
+                0 0 100px rgba(var(--skin-accent-rgb), 0.1);
             max-width: 850px;
             width: 90%;
             position: relative;
@@ -137,8 +141,8 @@
         h1 {
             font-size: 2.5em;
             margin-bottom: 10px;
-            color: #ffd700;
-            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            color: var(--skin-accent);
+            text-shadow: 0 0 20px rgba(var(--skin-accent-rgb), 0.5);
             letter-spacing: 3px;
         }
 
@@ -177,9 +181,9 @@
 
         .chip-count {
             font-size: 2em;
-            color: #ffd700;
+            color: var(--skin-accent);
             font-weight: bold;
-            text-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+            text-shadow: 0 0 15px rgba(var(--skin-accent-rgb), 0.6);
             transition: all 0.3s ease;
             display: inline-block;
         }
@@ -204,8 +208,8 @@
 
         @keyframes chipIncrease {
             0% { color: #00ff00; transform: scale(1.3); }
-            50% { color: #ffd700; transform: scale(1.1); }
-            100% { color: #ffd700; transform: scale(1); }
+            50% { color: var(--skin-accent); transform: scale(1.1); }
+            100% { color: var(--skin-accent); transform: scale(1); }
         }
 
         /* 筹码减少时的红色闪光效果 */
@@ -215,8 +219,8 @@
 
         @keyframes chipDecrease {
             0% { color: #ff4444; transform: scale(1.1); }
-            50% { color: #ffd700; transform: scale(1.05); }
-            100% { color: #ffd700; transform: scale(1); }
+            50% { color: var(--skin-accent); transform: scale(1.05); }
+            100% { color: var(--skin-accent); transform: scale(1); }
         }
 
         .chip-label {
@@ -291,10 +295,10 @@
 
         .card-title {
             font-size: 1.8em;
-            color: #ffd700;
+            color: var(--skin-accent);
             margin-bottom: 10px;
             font-weight: bold;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            text-shadow: 0 0 10px rgba(var(--skin-accent-rgb), 0.3);
         }
 
         .card-desc {
@@ -326,11 +330,11 @@
         }
 
         .luck-high { color: #00ff00; text-shadow: 0 0 10px rgba(0, 255, 0, 0.5); }
-        .luck-medium { color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        .luck-medium { color: var(--skin-accent); text-shadow: 0 0 10px rgba(var(--skin-accent-rgb), 0.5); }
         .luck-low { color: #ff6b6b; text-shadow: 0 0 10px rgba(255, 107, 107, 0.5); }
 
         .btn {
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            background: var(--skin-button-gradient);
             color: #1a1a2e;
             border: none;
             padding: 15px 40px;
@@ -339,7 +343,7 @@
             border-radius: 50px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
+            box-shadow: 0 5px 20px rgba(var(--skin-accent-rgb), 0.3);
             text-transform: uppercase;
             letter-spacing: 2px;
             margin: 10px;
@@ -347,8 +351,8 @@
 
         .btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
-            background: linear-gradient(135deg, #ffed4a, #ff9900);
+            box-shadow: 0 8px 30px rgba(var(--skin-accent-rgb), 0.5);
+            background: var(--skin-button-gradient);
         }
 
         .btn:active {
@@ -430,10 +434,10 @@
         }
 
         .history h3 {
-            color: #ffd700;
+            color: var(--skin-accent);
             margin-bottom: 15px;
             font-size: 1.2em;
-            border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+            border-bottom: 1px solid rgba(var(--skin-accent-rgb), 0.3);
             padding-bottom: 10px;
         }
 
@@ -485,8 +489,8 @@
 
         .sound-btn {
             background: rgba(0, 0, 0, 0.6);
-            border: 2px solid #ffd700;
-            color: #ffd700;
+            border: 2px solid var(--skin-accent);
+            color: var(--skin-accent);
             padding: 10px 15px;
             border-radius: 25px;
             cursor: pointer;
@@ -927,9 +931,9 @@
 
         .shop-title, .skin-library-title {
             font-size: 2em;
-            color: #ffd700;
+            color: var(--skin-accent);
             margin-bottom: 20px;
-            text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            text-shadow: 0 0 15px rgba(var(--skin-accent-rgb), 0.5);
         }
 
         .skin-grid {
@@ -4923,31 +4927,33 @@
             closeSkinLibrary();
         }
 
+        /**
+         * 应用皮肤（使用 CSS 变量）
+         */
         function applySkin(skinId) {
             const skin = skins[skinId];
             if (!skin) return;
 
             currentSkin = skinId;
+            const root = document.documentElement;
 
-            // 应用皮肤到 body
-            document.body.style.background = skin.bodyBg;
+            // 设置 CSS 变量
+            root.style.setProperty('--skin-body-bg', skin.bodyBg || 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 40%, #0f0f1a 100%)');
+            root.style.setProperty('--skin-container-bg', skin.containerBg || 'rgba(10, 10, 10, 0.85)');
+            root.style.setProperty('--skin-border-color', skin.borderColor || 'rgba(255, 215, 0, 0.4)');
+            root.style.setProperty('--skin-accent', skin.accentColor || '#ffd700');
+            root.style.setProperty('--skin-card-bg', skin.cardBg || 'linear-gradient(145deg, #2a2a4a, #1a1a3a)');
+            root.style.setProperty('--skin-button-gradient', skin.buttonGradient || 'linear-gradient(135deg, #ffd700, #ff8c00)');
 
-            // 应用皮肤到 container
-            const container = document.querySelector('.container');
-            container.style.background = skin.containerBg;
-            container.style.borderColor = skin.borderColor;
-
-            // 更新所有使用 accentColor 的元素
-            document.querySelectorAll('h1, .chip-count, .card-title, .history h3, .shop-title, .skin-library-title').forEach(el => {
-                el.style.color = skin.accentColor;
-            });
-
-            // 更新按钮边框
-            document.querySelectorAll('.btn').forEach(btn => {
-                if (!btn.classList.contains('btn-shop')) {
-                    btn.style.boxShadow = `0 5px 20px ${skin.accentColor}40`;
-                }
-            });
+            // 提取 RGB 值用于 rgba() 函数
+            const rgbMatch = (skin.accentColor || '#ffd700').match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+            if (rgbMatch) {
+                const r = parseInt(rgbMatch[1], 16);
+                const g = parseInt(rgbMatch[2], 16);
+                const b = parseInt(rgbMatch[3], 16);
+                root.style.setProperty('--skin-accent-rgb', `${r}, ${g}, ${b}`);
+                root.style.setProperty('--skin-glow', `rgba(${r}, ${g}, ${b}, 0.1)`);
+            }
 
             // 启动对应的特效
             startEffectForSkin(skinId);
