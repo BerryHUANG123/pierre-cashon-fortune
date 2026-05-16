@@ -1999,37 +1999,6 @@
             }
         ];
 
-        // ==================== 特效系统 ====================
-
-        // 初始化特效 Canvas
-        function initEffectCanvas() {
-            effectCanvas = document.getElementById('effectCanvas');
-            effectCtx = effectCanvas.getContext('2d');
-            resizeEffectCanvas();
-            window.addEventListener('resize', resizeEffectCanvas);
-        }
-
-        function resizeEffectCanvas() {
-            if (effectCanvas) {
-                effectCanvas.width = window.innerWidth;
-                effectCanvas.height = window.innerHeight;
-            }
-        }
-
-        // 停止当前特效
-        function stopEffect() {
-            if (effectAnimationId) {
-                cancelAnimationFrame(effectAnimationId);
-                effectAnimationId = null;
-            }
-            effectParticles = [];
-            if (effectCtx) {
-                effectCtx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
-            }
-        }
-
-        // ==================== 特效系统函数结束 ====================
-
         // 背景音乐系统
         function playJazzMusic() {
             if (!ownedSounds.jazz || !soundEnabled) {
