@@ -82,6 +82,7 @@
         let lastPayday = new Date();
         let accelerateCount = 0;
         let xrayActive = false;
+        let luckyCharmActive = false;  // 幸运符效果：下次抽卡稀有率 +15%
         let currentBgMusic = null;
         let bgMusicPlaying = false;
         let ownedSounds = {
@@ -113,11 +114,12 @@
         let selectedSkinForEquip = null;
         let currentSkinTab = 'all';
         let currentShopCategory = 'all';
-
+        let inventory = {};  // 库存：{ itemId: { count: number, name: string, desc: string, icon: string, item: object } }
+    
         // ==================== GameState 统一数据管理 ====================
         class GameState {
-            static STORAGE_KEY = 'pierresCasinoData_v3';
-            static VERSION = 3;
+            static STORAGE_KEY = 'pierresCasinoData_v4';
+            static VERSION = 4;
 
             static getDefaultData() {
                 return {
@@ -148,7 +150,8 @@
                     totalChipsEarned: 0,
                     consecutiveHighLuck: 0,
                     totalDraws: 0,
-                    skinsCollected: 0
+                    skinsCollected: 0,
+                    inventory: {}  // 库存：{ itemId: count }
                 };
             }
 
@@ -167,6 +170,11 @@
                         }
                     });
                     data._version = 3;
+                }
+                // v3 -> v4: 添加库存系统
+                if (data._version < 4) {
+                    data.inventory = data.inventory || {};
+                    data._version = 4;
                 }
                 return data;
             }
@@ -193,7 +201,8 @@
                     totalChipsEarned: totalChipsEarned,
                     consecutiveHighLuck: consecutiveHighLuck,
                     totalDraws: totalDraws,
-                    skinsCollected: skinsCollected
+                    skinsCollected: skinsCollected,
+                    inventory: inventory
                 };
                 localStorage.setItem(GameState.STORAGE_KEY, JSON.stringify(data));
             }
@@ -260,7 +269,8 @@
                     consecutiveHighLuck = data.consecutiveHighLuck || 0;
                     totalDraws = data.totalDraws || 0;
                     skinsCollected = data.skinsCollected || Object.values(ownedSkins).filter(v => v).length;
-
+                    inventory = data.inventory || {};
+    
                     return true;
                 } catch (e) {
                     console.error('加载数据失败:', e);
@@ -1817,6 +1827,15 @@
                 count: 1
             },
             {
+                id: 'lucky-charm',
+                name: '🍀 幸运符',
+                desc: '下次抽卡稀有率 +15%',
+                price: 40,
+                owned: false,
+                type: 'consumable',
+                count: 1
+            },
+            {
                 id: 'skin-cyber-neon',
                 name: '🎨 赛博霓虹・未来都市',
                 desc: '2077 年赛博朋克，霓虹科技感 + 全息投影',
@@ -2304,16 +2323,20 @@
         }
 
         function getRandomCard() {
-            // 应用连抽稀有率加成
+            // 计算稀有率加成 = 连击加成 + 幸运符加成
+            const luckyBonus = luckyCharmActive ? 15 : 0;
+            const totalRareBonus = comboRareBonus + luckyBonus;
+
+            // 应用稀有率加成
             const adjustedCards = luckCards.map(card => {
                 // 根据稀有度计算加成
                 let rarityBonus = 1;
                 if (card.luck === '传说') {
-                    rarityBonus = 1 + (comboRareBonus / 100) * 2; // 传说牌加成翻倍
+                    rarityBonus = 1 + (totalRareBonus / 100) * 2; // 传说牌加成翻倍
                 } else if (card.luck === '极高' || card.luck === '高') {
-                    rarityBonus = 1 + (comboRareBonus / 100) * 1.5;
+                    rarityBonus = 1 + (totalRareBonus / 100) * 1.5;
                 } else if (card.luck === '中上' || card.luck === '中等') {
-                    rarityBonus = 1 + (comboRareBonus / 100);
+                    rarityBonus = 1 + (totalRareBonus / 100);
                 }
 
                 return {
@@ -2435,6 +2458,12 @@
 
                     addToHistory(finalCard);
                     isShuffling = false;
+
+                    // 重置一次性道具效果（幸运符、透视眼镜均为一次性）
+                    if (luckyCharmActive) {
+                        luckyCharmActive = false;
+                    }
+                    // xrayActive 由 setTimeout 自动重置
 
                     // 抽卡完全结束后保存数据
                     saveData();
@@ -2939,19 +2968,14 @@
             updateChipDisplay();
 
             if (item.type === 'consumable') {
-                if (item.id === 'accelerate') {
-                    accelerateCount += item.count * buyQuantity;
-                    showTooltip(`获得 ${item.count * buyQuantity} 张加速卡！`, 'success', 3000);
-                    // 道具不设置 owned 标志，可以重复购买
-                } else if (item.id === 'xray') {
-                    xrayActive = true;
-                    showTooltip(`透视眼镜已激活！下次抽卡将显示概率分布。`, 'info', 4000);
-                    setTimeout(() => {
-                        xrayActive = false;
-                    }, 10000);
-                    // 道具不设置 owned 标志，可以重复购买
+                // 道具加入库存，而非立即生效
+                const actualCount = (item.count || 1) * buyQuantity;
+                if (!inventory[item.id]) {
+                    inventory[item.id] = { count: 0, name: getShopName(item), desc: item.desc, icon: getShopIcon(item), item: item };
                 }
-                // 道具类商品不设置 owned = true
+                inventory[item.id].count += actualCount;
+                saveData();
+                showTooltip(`${getShopName(item)} 已存入仓库！去「我的物品」查看。`, 'success', 3500);
             } else if (item.type === 'sound') {
                 if (item.id === 'sound1') {
                     ownedSounds.jazz = true;
@@ -2980,7 +3004,120 @@
         function updateShopItems() {
             renderShopItems();
         }
-
+    
+        /**
+         * 使用仓库中的道具
+         * @param {string} itemId - 道具ID
+         */
+        function useItem(itemId) {
+            const inv = inventory[itemId];
+            if (!inv || inv.count <= 0) {
+                showTooltip('道具不足！', 'error', 2000);
+                return;
+            }
+    
+            const item = inv.item;
+            inv.count -= 1;
+            if (inv.count <= 0) {
+                delete inventory[itemId];
+            }
+    
+            // 根据道具ID应用效果
+            if (itemId === 'accelerate') {
+                accelerateCount += item.count || 1;
+                showTooltip(`使用了 ${item.name || '加速卡'}，下次抽卡动画加速！`, 'success', 3000);
+            } else if (itemId === 'xray') {
+                xrayActive = true;
+                showTooltip(`使用了 ${item.name || '透视眼镜'}，下次抽卡将显示概率分布！`, 'info', 4000);
+                setTimeout(() => { xrayActive = false; }, 15000);
+            } else if (itemId === 'lucky-charm') {
+                // 幸运符：本次抽卡稀有率 +15%
+                luckyCharmActive = true;
+                showTooltip(`使用了 ${item.name || '幸运符'}，下次抽卡稀有率 +15%！`, 'success', 3000);
+            }
+    
+            saveData();
+            renderInventoryItems();
+        }
+    
+        /**
+         * 渲染「我的物品」列表
+         */
+        function renderInventoryItems() {
+            const container = document.getElementById('inventoryItems');
+            if (!container) return;
+    
+            const itemIds = Object.keys(inventory);
+            if (itemIds.length === 0) {
+                container.innerHTML = '<div class="inventory-empty">📦 仓库空空如也，快去商店购买道具吧！</div>';
+                return;
+            }
+    
+            container.innerHTML = itemIds.map(itemId => {
+                const inv = inventory[itemId];
+                const item = inv.item;
+                const isAccelerate = itemId === 'accelerate';
+                const isXray = itemId === 'xray';
+                const isLuckyCharm = itemId === 'lucky-charm';
+                let effectDesc = item.desc;
+                if (isAccelerate) effectDesc = `下次抽卡动画速度翻倍（现有 ${accelerateCount} 张加速卡）`;
+                if (isXray) effectDesc = '下次抽卡显示概率分布';
+                if (isLuckyCharm) effectDesc = '下次抽卡稀有率 +15%';
+    
+                return `
+                <div class="inventory-item">
+                    <div class="inventory-item-icon">${inv.icon}</div>
+                    <div class="inventory-item-info">
+                        <div class="inventory-item-name">${inv.name}</div>
+                        <div class="inventory-item-count">× ${inv.count}</div>
+                        <div class="inventory-item-desc">${effectDesc}</div>
+                    </div>
+                    <button class="inventory-use-btn" onclick="useItem('${itemId}')">使用</button>
+                </div>`;
+            }).join('');
+    
+            // 更新仓库入口按钮上的数量角标
+            updateInventoryBadge();
+        }
+    
+        /**
+         * 更新仓库按钮上的数量角标
+         */
+        function updateInventoryBadge() {
+            const btn = document.getElementById('inventoryBtn');
+            if (!btn) return;
+            const total = Object.values(inventory).reduce((sum, inv) => sum + inv.count, 0);
+            let badge = document.getElementById('inventoryBadge');
+            if (total > 0) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.id = 'inventoryBadge';
+                    badge.style.cssText = 'position:absolute;top:-6px;right:-6px;background:#e74c3c;color:#fff;font-size:11px;font-weight:bold;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;';
+                    btn.style.position = 'relative';
+                    btn.appendChild(badge);
+                }
+                badge.textContent = total > 99 ? '99+' : total;
+                badge.style.display = 'flex';
+            } else if (badge) {
+                badge.style.display = 'none';
+            }
+        }
+    
+        /**
+         * 打开「我的物品」弹窗
+         */
+        function openInventory() {
+            renderInventoryItems();
+            document.getElementById('inventoryModal').classList.add('active');
+        }
+    
+        /**
+         * 关闭「我的物品」弹窗
+         */
+        function closeInventory() {
+            document.getElementById('inventoryModal').classList.remove('active');
+        }
+    
         // 数据保存功能 - 已迁移到 GameState.save()
 
         // 数据加载功能 - 已迁移到 GameState.load()
@@ -3002,6 +3139,14 @@
             totalChipsEarned = 100; // 新玩家初始筹码计入累计
         }
         checkAchievements(); // 初始化成就进度
+
+        // 新手礼包：新用户赠送道具
+        if (!dataLoaded) {
+            inventory['accelerate'] = { count: 3, name: '⚡ 加速卡 x3', desc: '下次抽卡动画速度翻倍', icon: '⚡', item: shopItems.find(i => i.id === 'accelerate') || { id: 'accelerate', count: 3 } };
+            inventory['lucky-charm'] = { count: 1, name: '🍀 幸运符', desc: '下次抽卡稀有率 +15%', icon: '🍀', item: shopItems.find(i => i.id === 'lucky-charm') || { id: 'lucky-charm', count: 1 } };
+            showTooltip('🎁 新手礼包已到账：加速卡×3、幸运符×1！', 'success', 5000);
+            saveData();
+        }
 
         setInterval(updatePaydayTimer, 1000);
 
@@ -3184,3 +3329,6 @@
         window.changeSkin = changeSkin;
         window.resetGame = resetGame;
         window.closeAchievements = closeAchievements;
+        window.openInventory = openInventory;
+        window.closeInventory = closeInventory;
+        window.useItem = useItem;

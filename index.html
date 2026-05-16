@@ -32,6 +32,7 @@
         <button class="sound-btn bgm-btn" id="bgmBtn" onclick="toggleBgMusic()" title="切换背景音乐" style="display: none;">🎵 音乐</button>
         <button class="skin-lib-btn" onclick="openAchievements()" title="成就徽章墙">🏆</button>
         <button class="skin-lib-btn" onclick="openSkinLibrary()" title="皮肤库">🎨</button>
+        <button class="skin-lib-btn" id="inventoryBtn" onclick="openInventory()" title="我的物品">📦</button>
     </div>
 
     <div class="container">
@@ -197,6 +198,21 @@
                 <div class="skin-btn-group">
                     <button class="skin-action-btn skin-equip-btn" id="equipSkinBtn" onclick="equipSelectedSkin()" disabled>装备皮肤</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 我的物品弹窗 -->
+    <div class="inventory-modal" id="inventoryModal">
+        <div class="inventory-overlay" onclick="closeInventory()"></div>
+        <div class="inventory-content">
+            <button class="achievement-close" onclick="closeInventory()">×</button>
+            <div class="inventory-header">
+                <h2 class="inventory-title">📦 我的物品</h2>
+                <p class="inventory-subtitle">"准备好使用你的道具了吗？"</p>
+            </div>
+            <div class="inventory-grid" id="inventoryItems">
+                <!-- 道具卡片将由 JavaScript 生成 -->
             </div>
         </div>
     </div>
