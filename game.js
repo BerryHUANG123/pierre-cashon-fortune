@@ -205,6 +205,7 @@
                     inventory: inventory
                 };
                 localStorage.setItem(GameState.STORAGE_KEY, JSON.stringify(data));
+                localStorage.setItem('pierresCasinoLastSave', Date.now().toString());
             }
 
             static load() {
@@ -3332,3 +3333,340 @@
         window.openInventory = openInventory;
         window.closeInventory = closeInventory;
         window.useItem = useItem;
+    
+        // ==================== Supabase 认证与数据同步 ====================
+        let isAuthMode = 'login'; // 'login' | 'register'
+        let currentUser = null;   // 当前登录用户
+        let isSyncing = false;    // 防止并发同步
+    
+        /**
+         * 处理顶部认证按钮点击
+         */
+        function handleAuthBtnClick() {
+            if (currentUser) {
+                // 已登录 → 显示用户信息面板
+                showLoggedInPanel();
+                document.getElementById('authModal').classList.add('active');
+            } else {
+                // 未登录 → 显示登录表单
+                showLoginForm();
+                document.getElementById('authModal').classList.add('active');
+            }
+        }
+    
+        /**
+         * 关闭认证弹窗
+         */
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+        }
+    
+        /**
+         * 显示登录表单
+         */
+        function showLoginForm() {
+            isAuthMode = 'login';
+            document.getElementById('authModalTitle').textContent = '👤 登录';
+            document.getElementById('authSubmitBtn').textContent = '登录';
+            document.getElementById('authSwitchText').textContent = '没有账号？';
+            document.getElementById('authSwitchLink').textContent = '注册新账号';
+            document.getElementById('authForm').style.display = 'block';
+            document.getElementById('authLoggedIn').style.display = 'none';
+        }
+    
+        /**
+         * 显示已登录面板
+         */
+        function showLoggedInPanel() {
+            document.getElementById('authForm').style.display = 'none';
+            document.getElementById('authLoggedIn').style.display = 'block';
+            document.getElementById('authUserEmail').textContent = currentUser.email;
+            document.getElementById('authSyncStatus').textContent = '✅ 数据已同步';
+        }
+    
+        /**
+         * 切换登录/注册模式
+         */
+        function toggleAuthMode() {
+            if (isAuthMode === 'login') {
+                isAuthMode = 'register';
+                document.getElementById('authModalTitle').textContent = '📝 注册';
+                document.getElementById('authSubmitBtn').textContent = '注册';
+                document.getElementById('authSwitchText').textContent = '已有账号？';
+                document.getElementById('authSwitchLink').textContent = '去登录';
+            } else {
+                isAuthMode = 'login';
+                document.getElementById('authModalTitle').textContent = '👤 登录';
+                document.getElementById('authSubmitBtn').textContent = '登录';
+                document.getElementById('authSwitchText').textContent = '没有账号？';
+                document.getElementById('authSwitchLink').textContent = '注册新账号';
+            }
+        }
+    
+        /**
+         * 提交登录/注册
+         */
+        async function submitAuth() {
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value;
+    
+            if (!email || !password) {
+                showTooltip('请填写邮箱和密码！', 'error', 3000);
+                return;
+            }
+    
+            if (password.length < 6) {
+                showTooltip('密码至少6位！', 'error', 3000);
+                return;
+            }
+    
+            const btn = document.getElementById('authSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = isAuthMode === 'login' ? '登录中...' : '注册中...';
+    
+            try {
+                let result;
+                if (isAuthMode === 'login') {
+                    result = await supabase.auth.signInWithPassword({ email, password });
+                } else {
+                    result = await supabase.auth.signUp({ email, password });
+                }
+    
+                if (result.error) {
+                    // 友好错误提示
+                    let msg = result.error.message;
+                    if (msg.includes('Invalid login credentials')) msg = '邮箱或密码错误';
+                    if (msg.includes('User already registered')) msg = '该邮箱已注册，请直接登录';
+                    if (msg.includes('Email not confirmed')) msg = '注册成功！请查收邮箱验证后登录';
+                    showTooltip(msg, 'error', 4000);
+                    btn.disabled = false;
+                    btn.textContent = isAuthMode === 'login' ? '登录' : '注册';
+                    return;
+                }
+    
+                currentUser = result.data.user;
+                updateAuthButton();
+                showTooltip(isAuthMode === 'login' ? '🎉 登录成功！' : '🎉 注册成功！', 'success', 3000);
+    
+                // 登录后从云端拉取数据
+                await syncFromCloud();
+    
+                // 切换到已登录面板
+                showLoggedInPanel();
+            } catch (err) {
+                console.error('认证错误:', err);
+                showTooltip('网络错误，请重试', 'error', 3000);
+            }
+    
+            btn.disabled = false;
+            btn.textContent = isAuthMode === 'login' ? '登录' : '注册';
+        }
+    
+        /**
+         * 游客继续
+         */
+        function continueAsGuest() {
+            closeAuthModal();
+            showTooltip('以游客模式继续，数据仅存于本地', 'info', 3000);
+        }
+    
+        /**
+         * 退出登录
+         */
+        async function handleLogout() {
+            try {
+                await supabase.auth.signOut();
+            } catch (e) {
+                console.error('登出错误:', e);
+            }
+            currentUser = null;
+            updateAuthButton();
+            closeAuthModal();
+            showTooltip('已退出登录，数据保留在本地', 'info', 3000);
+        }
+    
+        /**
+         * 更新顶部认证按钮状态
+         */
+        function updateAuthButton() {
+            const btn = document.getElementById('authBtn');
+            if (!btn) return;
+            if (currentUser) {
+                btn.textContent = '👤';
+                btn.title = currentUser.email;
+                btn.classList.add('auth-btn-logged-in');
+            } else {
+                btn.textContent = '👤';
+                btn.title = '登录同步数据';
+                btn.classList.remove('auth-btn-logged-in');
+            }
+        }
+    
+        /**
+         * 从云端同步数据到本地
+         */
+        async function syncFromCloud() {
+            if (!currentUser || isSyncing) return;
+            isSyncing = true;
+    
+            try {
+                const { data, error } = await supabase
+                    .from('game_data')
+                    .select('data, updated_at')
+                    .eq('user_id', currentUser.id)
+                    .single();
+    
+                if (error && error.code !== 'PGRST116') {
+                    console.error('云端数据读取失败:', error);
+                    showTooltip('⚠️ 云端数据读取失败', 'error', 3000);
+                    return;
+                }
+    
+                if (data && data.data) {
+                    // 有云端数据，与本地合并
+                    const cloudData = data.data;
+                    const cloudTime = new Date(data.updated_at).getTime();
+                    const localTime = localStorage.getItem('pierresCasinoLastSave');
+                    const localTs = localTime ? parseInt(localTime) : 0;
+    
+                    if (cloudTime > localTs) {
+                        // 云端更新 → 覆盖本地
+                        applyCloudData(cloudData);
+                        showTooltip('☁️ 已从云端同步数据', 'success', 3000);
+                    } else {
+                        // 本地更新 → 上传到云端
+                        await syncToCloud();
+                    }
+                } else {
+                    // 云端无数据 → 上传本地数据
+                    await syncToCloud();
+                }
+            } catch (err) {
+                console.error('同步错误:', err);
+            } finally {
+                isSyncing = false;
+            }
+        }
+    
+        /**
+         * 将本地数据同步到云端
+         */
+        async function syncToCloud() {
+            if (!currentUser || isSyncing) return;
+            isSyncing = true;
+    
+            try {
+                // 先保存一次最新数据到 localStorage
+                saveData();
+    
+                // 读取 localStorage 中的原始数据
+                const saved = localStorage.getItem(GameState.STORAGE_KEY);
+                const gameData = saved ? JSON.parse(saved) : {};
+    
+                // 查询云端是否已有记录
+                const { data: existing } = await supabase
+                    .from('game_data')
+                    .select('id')
+                    .eq('user_id', currentUser.id)
+                    .single();
+    
+                if (existing) {
+                    // 更新
+                    const { error } = await supabase
+                        .from('game_data')
+                        .update({ data: gameData })
+                        .eq('user_id', currentUser.id);
+                    if (error) throw error;
+                } else {
+                    // 插入
+                    const { error } = await supabase
+                        .from('game_data')
+                        .insert({ user_id: currentUser.id, data: gameData });
+                    if (error) throw error;
+                }
+    
+                // 记录同步时间
+                localStorage.setItem('pierresCasinoLastSave', Date.now().toString());
+    
+                const statusEl = document.getElementById('authSyncStatus');
+                if (statusEl) statusEl.textContent = '✅ 数据已同步';
+                showTooltip('☁️ 数据已同步到云端！', 'success', 3000);
+            } catch (err) {
+                console.error('上传云端失败:', err);
+                const statusEl = document.getElementById('authSyncStatus');
+                if (statusEl) statusEl.textContent = '⚠️ 同步失败，请重试';
+                showTooltip('⚠️ 同步失败', 'error', 3000);
+            } finally {
+                isSyncing = false;
+            }
+        }
+    
+        /**
+         * 将云端数据应用到本地
+         */
+        function applyCloudData(cloudData) {
+            // 写入 localStorage 然后重新加载
+            localStorage.setItem(GameState.STORAGE_KEY, JSON.stringify(cloudData));
+            GameState.load();
+    
+            // 刷新 UI
+            updateChipDisplay(false);
+            updateHistoryDisplay();
+            updateBgmButton();
+            applySkin(currentSkin);
+            checkAchievements();
+            updateMiningButton();
+            updateWheelCooldown();
+            if (Object.keys(inventory).length > 0) {
+                updateInventoryBadge();
+            }
+        }
+    
+        /**
+         * 自动同步：每次 saveData 时检查是否登录，如果登录则同步到云端
+         */
+        const _originalSaveData = saveData;
+        saveData = function() {
+            _originalSaveData();
+            // 如果已登录，异步同步到云端（不阻塞）
+            if (currentUser && !isSyncing) {
+                syncToCloud().catch(err => console.error('自动同步失败:', err));
+            }
+        };
+    
+        /**
+         * 初始化：检查 Supabase 是否已登录
+         */
+        (async function initAuth() {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session && session.user) {
+                    currentUser = session.user;
+                    updateAuthButton();
+                    // 静默从云端同步
+                    await syncFromCloud();
+                }
+            } catch (err) {
+                console.error('初始化认证失败:', err);
+            }
+        })();
+    
+        // 监听认证状态变化
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                currentUser = session.user;
+                updateAuthButton();
+            } else if (event === 'SIGNED_OUT') {
+                currentUser = null;
+                updateAuthButton();
+            }
+        });
+    
+        // 暴露认证相关全局函数
+        window.handleAuthBtnClick = handleAuthBtnClick;
+        window.closeAuthModal = closeAuthModal;
+        window.toggleAuthMode = toggleAuthMode;
+        window.submitAuth = submitAuth;
+        window.continueAsGuest = continueAsGuest;
+        window.handleLogout = handleLogout;
+        window.syncToCloud = syncToCloud;

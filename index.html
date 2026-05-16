@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎰 皮尔卡松的牌运预测 🎰</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <canvas id="effectCanvas"></canvas>
@@ -28,6 +29,7 @@
     </div>
 
     <div class="sound-control">
+        <button class="skin-lib-btn" id="authBtn" onclick="handleAuthBtnClick()" title="登录同步数据">👤</button>
         <button class="sound-btn" id="soundBtn" onclick="toggleSound()" title="切换音效">音效</button>
         <button class="sound-btn bgm-btn" id="bgmBtn" onclick="toggleBgMusic()" title="切换背景音乐" style="display: none;">🎵 音乐</button>
         <button class="skin-lib-btn" onclick="openAchievements()" title="成就徽章墙">🏆</button>
@@ -217,6 +219,46 @@
         </div>
     </div>
 
+    <!-- 登录/注册弹窗 -->
+    <div class="auth-modal" id="authModal">
+        <div class="auth-overlay" onclick="closeAuthModal()"></div>
+        <div class="auth-content">
+            <button class="achievement-close" onclick="closeAuthModal()">×</button>
+            <div class="auth-header">
+                <h2 class="auth-title" id="authModalTitle">👤 登录</h2>
+                <p class="auth-subtitle">登录后数据云端同步，换设备也不丢失！</p>
+            </div>
+            <div class="auth-form" id="authForm">
+                <div class="auth-field">
+                    <label class="auth-label">邮箱</label>
+                    <input type="email" id="authEmail" class="auth-input" placeholder="your@email.com" autocomplete="email">
+                </div>
+                <div class="auth-field">
+                    <label class="auth-label">密码</label>
+                    <input type="password" id="authPassword" class="auth-input" placeholder="至少6位" autocomplete="current-password">
+                </div>
+                <button class="auth-submit-btn" id="authSubmitBtn" onclick="submitAuth()">登录</button>
+                <div class="auth-switch">
+                    <span id="authSwitchText">没有账号？</span>
+                    <a href="javascript:void(0)" id="authSwitchLink" onclick="toggleAuthMode()">注册新账号</a>
+                </div>
+                <div class="auth-divider">或者</div>
+                <button class="auth-guest-btn" onclick="continueAsGuest()">暂不登录，继续游戏</button>
+            </div>
+            <!-- 已登录状态 -->
+            <div class="auth-logged-in" id="authLoggedIn" style="display: none;">
+                <div class="auth-user-info">
+                    <div class="auth-avatar">👤</div>
+                    <div class="auth-user-email" id="authUserEmail">user@email.com</div>
+                    <div class="auth-sync-status" id="authSyncStatus">✅ 数据已同步</div>
+                </div>
+                <button class="auth-sync-btn" onclick="syncToCloud()">☁️ 立即同步</button>
+                <button class="auth-logout-btn" onclick="handleLogout()">退出登录</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="supabase-config.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
