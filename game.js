@@ -3325,10 +3325,6 @@
     
         // 全局函数（供HTML中的onclick调用）
         window.drawCard = drawCard;
-        window.toggleHistory = toggleHistory;
-        window.toggleSettings = toggleSettings;
-        window.changeSkin = changeSkin;
-        window.resetGame = resetGame;
         window.closeAchievements = closeAchievements;
         window.openInventory = openInventory;
         window.closeInventory = closeInventory;
@@ -3427,9 +3423,9 @@
             try {
                 let result;
                 if (isAuthMode === 'login') {
-                    result = await supabase.auth.signInWithPassword({ email, password });
+                    result = await supabaseClient.auth.signInWithPassword({ email, password });
                 } else {
-                    result = await supabase.auth.signUp({ email, password });
+                    result = await supabaseClient.auth.signUp({ email, password });
                 }
     
                 if (result.error) {
@@ -3475,7 +3471,7 @@
          */
         async function handleLogout() {
             try {
-                await supabase.auth.signOut();
+                await supabaseClient.auth.signOut();
             } catch (e) {
                 console.error('登出错误:', e);
             }
@@ -3510,7 +3506,7 @@
             isSyncing = true;
     
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('game_data')
                     .select('data, updated_at')
                     .eq('user_id', currentUser.id)
@@ -3564,7 +3560,7 @@
                 const gameData = saved ? JSON.parse(saved) : {};
     
                 // 查询云端是否已有记录
-                const { data: existing } = await supabase
+                const { data: existing } = await supabaseClient
                     .from('game_data')
                     .select('id')
                     .eq('user_id', currentUser.id)
@@ -3572,14 +3568,14 @@
     
                 if (existing) {
                     // 更新
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('game_data')
                         .update({ data: gameData })
                         .eq('user_id', currentUser.id);
                     if (error) throw error;
                 } else {
                     // 插入
-                    const { error } = await supabase
+                    const { error } = await supabaseClient
                         .from('game_data')
                         .insert({ user_id: currentUser.id, data: gameData });
                     if (error) throw error;
@@ -3639,7 +3635,7 @@
          */
         (async function initAuth() {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const { data: { session } } = await supabaseClient.auth.getSession();
                 if (session && session.user) {
                     currentUser = session.user;
                     updateAuthButton();
@@ -3652,7 +3648,7 @@
         })();
     
         // 监听认证状态变化
-        supabase.auth.onAuthStateChange((event, session) => {
+        supabaseClient.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN' && session) {
                 currentUser = session.user;
                 updateAuthButton();
