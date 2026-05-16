@@ -3294,6 +3294,9 @@
         let isAuthMode = 'login'; // 'login' | 'register'
         let currentUser = null;   // 当前登录用户
         let isSaving = false;     // 防止并发保存
+        let currentSessionId = null;    // 当前会话ID（单点登录踢人机制）
+        let sessionPollingTimer = null; // 会话轮询定时器
+        const SESSION_POLL_INTERVAL = 30000; // 30秒轮询一次
     
         /**
          * 处理顶部认证按钮点击（已登录时显示用户信息）
@@ -3366,7 +3369,10 @@
     
                 currentUser = result.data.user;
                 updateAuthButton();
-    
+
+                // 注册当前会话（单点登录：覆盖其他设备的会话）
+                await registerSession();
+
                 // 登录成功：从云端加载数据
                 const cloudLoaded = await loadCloudData();
                 if (!cloudLoaded) {
@@ -3394,6 +3400,9 @@
          * 退出登录：清空本地数据，回到登录界面
          */
         async function handleLogout() {
+            // 清理会话记录（单点登录）
+            await clearSession();
+
             try {
                 await supabaseClient.auth.signOut();
             } catch (e) {
@@ -3518,6 +3527,132 @@
             document.getElementById('authUserEmail').textContent = currentUser.email;
         }
     
+        // ==================== 单点登录（踢人机制） ====================
+    
+        /**
+         * 注册当前会话到云端（登录成功后调用）
+         * 每次登录生成唯一 sessionId，写入 user_sessions 表
+         * 其他设备登录同一账号时，sessionId 被覆盖，旧设备轮询时检测到不匹配即被踢
+         */
+        async function registerSession() {
+            if (!currentUser) return;
+            const sessionId = crypto.randomUUID();
+            currentSessionId = sessionId;
+    
+            try {
+                const { error } = await supabaseClient
+                    .from('user_sessions')
+                    .upsert({
+                        user_id: currentUser.id,
+                        session_id: sessionId,
+                        device_info: navigator.userAgent.substring(0, 200),
+                        created_at: new Date().toISOString()
+                    });
+    
+                if (error) {
+                    console.error('注册会话失败:', error);
+                }
+    
+                // 启动会话轮询
+                startSessionPolling();
+            } catch (err) {
+                console.error('注册会话异常:', err);
+            }
+        }
+    
+        /**
+         * 启动会话有效性轮询
+         */
+        function startSessionPolling() {
+            stopSessionPolling();
+            sessionPollingTimer = setInterval(checkSessionValidity, SESSION_POLL_INTERVAL);
+        }
+    
+        /**
+         * 停止会话轮询
+         */
+        function stopSessionPolling() {
+            if (sessionPollingTimer) {
+                clearInterval(sessionPollingTimer);
+                sessionPollingTimer = null;
+            }
+        }
+    
+        /**
+         * 检查当前会话是否仍为最新（是否被其他设备踢出）
+         */
+        async function checkSessionValidity() {
+            if (!currentUser || !currentSessionId) return;
+    
+            try {
+                const { data, error } = await supabaseClient
+                    .from('user_sessions')
+                    .select('session_id')
+                    .eq('user_id', currentUser.id)
+                    .single();
+    
+                if (error) {
+                    console.error('检查会话失败:', error);
+                    return;
+                }
+    
+                if (data && data.session_id !== currentSessionId) {
+                    // 会话已被其他设备覆盖 → 强制下线
+                    await forceKickout();
+                }
+            } catch (err) {
+                console.error('会话检查异常:', err);
+            }
+        }
+    
+        /**
+         * 被踢下线：清空数据、退出登录、显示提示
+         */
+        async function forceKickout() {
+            stopSessionPolling();
+            currentSessionId = null;
+    
+            // 清空本地数据
+            localStorage.removeItem(GameState.STORAGE_KEY);
+            localStorage.removeItem('pierresCasinoLastSave');
+            resetGameToDefaults();
+    
+            // 退出 Supabase 会话
+            try {
+                await supabaseClient.auth.signOut();
+            } catch (e) {
+                console.error('踢出登出错误:', e);
+            }
+    
+            currentUser = null;
+            showLoginForm();
+            document.getElementById('authModal').classList.add('active');
+            updateAuthButton();
+    
+            // 显示被踢提示
+            showTooltip('⚠️ 您的账号已在其他设备登录，您已被强制下线', 'error', 6000);
+        }
+    
+        /**
+         * 清理会话记录（主动退出登录时调用）
+         */
+        async function clearSession() {
+            if (!currentUser) return;
+            stopSessionPolling();
+            currentSessionId = null;
+    
+            try {
+                await supabaseClient
+                    .from('user_sessions')
+                    .delete()
+                    .eq('user_id', currentUser.id);
+            } catch (err) {
+                console.error('清理会话失败:', err);
+            }
+        }
+    
+        // ==================== 云端数据存取 ====================
+    
         /**
          * 从云端加载数据（登录后的唯一数据源）
          * @returns {boolean} 是否成功加载到云端数据
@@ -3625,6 +3760,10 @@
                 if (session && session.user) {
                     currentUser = session.user;
                     updateAuthButton();
+
+                    // 恢复会话：注册当前设备（单点登录）
+                    await registerSession();
+
                     // 从云端加载数据
                     const loaded = await loadCloudData();
                     if (!loaded) {
@@ -3656,6 +3795,8 @@
                 updateAuthButton();
             } else if (event === 'SIGNED_OUT') {
                 currentUser = null;
+                stopSessionPolling();
+                currentSessionId = null;
                 resetGameToDefaults();
                 showLoginForm();
                 document.getElementById('authModal').classList.add('active');
