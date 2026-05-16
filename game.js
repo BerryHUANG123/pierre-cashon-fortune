@@ -3169,13 +3169,18 @@
             // 显示弹窗
             document.getElementById('achievementModal').classList.add('active');
         }
-
+    
         /**
          * 关闭成就弹窗
          */
         function closeAchievements() {
             document.getElementById('achievementModal').classList.remove('active');
         }
-    </script>
-</body>
-</html>
+    
+        // 全局函数（供HTML中的onclick调用）
+        window.drawCard = drawCard;
+        window.toggleHistory = toggleHistory;
+        window.toggleSettings = toggleSettings;
+        window.changeSkin = changeSkin;
+        window.resetGame = resetGame;
+        window.closeAchievements = closeAchievements;
