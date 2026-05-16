@@ -219,14 +219,12 @@
         </div>
     </div>
 
-    <!-- 登录/注册弹窗 -->
-    <div class="auth-modal" id="authModal">
-        <div class="auth-overlay" onclick="closeAuthModal()"></div>
+    <!-- 登录/注册弹窗（强制登录，不可关闭） -->
+    <div class="auth-modal active" id="authModal">
         <div class="auth-content">
-            <button class="achievement-close" onclick="closeAuthModal()">×</button>
             <div class="auth-header">
-                <h2 class="auth-title" id="authModalTitle">👤 登录</h2>
-                <p class="auth-subtitle">登录后数据云端同步，换设备也不丢失！</p>
+                <h2 class="auth-title" id="authModalTitle">🎰 皮尔卡松的牌运预测</h2>
+                <p class="auth-subtitle">登录后即可开始游戏，数据云端存储，换设备也不丢失！</p>
             </div>
             <div class="auth-form" id="authForm">
                 <div class="auth-field">
@@ -242,17 +240,13 @@
                     <span id="authSwitchText">没有账号？</span>
                     <a href="javascript:void(0)" id="authSwitchLink" onclick="toggleAuthMode()">注册新账号</a>
                 </div>
-                <div class="auth-divider">或者</div>
-                <button class="auth-guest-btn" onclick="continueAsGuest()">暂不登录，继续游戏</button>
             </div>
             <!-- 已登录状态 -->
             <div class="auth-logged-in" id="authLoggedIn" style="display: none;">
                 <div class="auth-user-info">
                     <div class="auth-avatar">👤</div>
                     <div class="auth-user-email" id="authUserEmail">user@email.com</div>
-                    <div class="auth-sync-status" id="authSyncStatus">✅ 数据已同步</div>
                 </div>
-                <button class="auth-sync-btn" onclick="syncToCloud()">☁️ 立即同步</button>
                 <button class="auth-logout-btn" onclick="handleLogout()">退出登录</button>
             </div>
         </div>

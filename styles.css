@@ -2334,7 +2334,7 @@
             font-size: 16px;
         }
 
-        /* ==================== 登录/注册弹窗 ==================== */
+        /* ==================== 登录/注册弹窗（强制登录，全屏遮罩） ==================== */
         .auth-modal {
             display: none;
             position: fixed;
@@ -2345,19 +2345,11 @@
             z-index: 4000;
             justify-content: center;
             align-items: center;
+            background: rgba(0, 0, 0, 0.92);
         }
 
         .auth-modal.active {
             display: flex;
-        }
-
-        .auth-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
         }
 
         .auth-content {
@@ -2463,44 +2455,6 @@
             text-decoration: underline;
         }
 
-        .auth-divider {
-            text-align: center;
-            color: #555;
-            font-size: 12px;
-            margin: 18px 0 14px;
-            position: relative;
-        }
-
-        .auth-divider::before,
-        .auth-divider::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            width: 35%;
-            height: 1px;
-            background: rgba(255, 215, 0, 0.2);
-        }
-
-        .auth-divider::before { left: 0; }
-        .auth-divider::after { right: 0; }
-
-        .auth-guest-btn {
-            width: 100%;
-            padding: 12px;
-            background: transparent;
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            border-radius: 12px;
-            color: #aaa;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .auth-guest-btn:hover {
-            border-color: rgba(255, 215, 0, 0.6);
-            color: #ffd700;
-        }
-
         /* 已登录状态 */
         .auth-logged-in {
             text-align: center;
@@ -2520,30 +2474,6 @@
             font-size: 16px;
             margin-bottom: 8px;
             word-break: break-all;
-        }
-
-        .auth-sync-status {
-            color: #4caf50;
-            font-size: 13px;
-        }
-
-        .auth-sync-btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #4caf50, #2e7d32);
-            border: none;
-            border-radius: 12px;
-            color: #fff;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 10px;
-        }
-
-        .auth-sync-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
         }
 
         .auth-logout-btn {

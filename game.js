@@ -3092,8 +3092,7 @@
 
         // 数据加载功能 - 已迁移到 GameState.load()
 
-        // 初始化显示
-        const dataLoaded = loadData(); // 尝试加载数据
+        // 初始化显示（基础 UI，数据将在登录后从云端加载）
         updateHistoryDisplay();
         updateChipDisplay(false); // 初始化时不播放动画
         updatePaydayTimer();
@@ -3104,19 +3103,11 @@
 
         applySkin(currentSkin); // 应用保存的皮肤或默认皮肤
 
-        // 初始化成就系统 - 设置初始筹码并检查成就
-        if (!dataLoaded) {
-            totalChipsEarned = 100; // 新玩家初始筹码计入累计
-        }
+        // 初始化成就系统
         checkAchievements(); // 初始化成就进度
 
-        // 新手礼包：新用户赠送道具
-        if (!dataLoaded) {
-            inventory['accelerate'] = { count: 3, name: '⚡ 加速卡 x3', desc: '下次抽卡动画速度翻倍', icon: '⚡', item: shopItems.find(i => i.id === 'accelerate') || { id: 'accelerate', count: 3 } };
-            inventory['lucky-charm'] = { count: 1, name: '🍀 幸运符', desc: '下次抽卡稀有率 +15%', icon: '🍀', item: shopItems.find(i => i.id === 'lucky-charm') || { id: 'lucky-charm', count: 1 } };
-            showTooltip('🎁 新手礼包已到账：加速卡×3、幸运符×1！', 'success', 5000);
-            saveData();
-        }
+        // 新手礼包逻辑已移至 loadCloudData() 中处理
+        // 首次注册的新用户将在云端无数据时获得新手礼包
 
         setInterval(updatePaydayTimer, 1000);
 
@@ -3299,54 +3290,19 @@
         window.closeInventory = closeInventory;
         window.useItem = useItem;
     
-        // ==================== Supabase 认证与数据同步 ====================
+        // ==================== Supabase 认证（强制登录，云端主存储） ====================
         let isAuthMode = 'login'; // 'login' | 'register'
         let currentUser = null;   // 当前登录用户
-        let isSyncing = false;    // 防止并发同步
+        let isSaving = false;     // 防止并发保存
     
         /**
-         * 处理顶部认证按钮点击
+         * 处理顶部认证按钮点击（已登录时显示用户信息）
          */
         function handleAuthBtnClick() {
             if (currentUser) {
-                // 已登录 → 显示用户信息面板
                 showLoggedInPanel();
                 document.getElementById('authModal').classList.add('active');
-            } else {
-                // 未登录 → 显示登录表单
-                showLoginForm();
-                document.getElementById('authModal').classList.add('active');
             }
-        }
-    
-        /**
-         * 关闭认证弹窗
-         */
-        function closeAuthModal() {
-            document.getElementById('authModal').classList.remove('active');
-        }
-    
-        /**
-         * 显示登录表单
-         */
-        function showLoginForm() {
-            isAuthMode = 'login';
-            document.getElementById('authModalTitle').textContent = '👤 登录';
-            document.getElementById('authSubmitBtn').textContent = '登录';
-            document.getElementById('authSwitchText').textContent = '没有账号？';
-            document.getElementById('authSwitchLink').textContent = '注册新账号';
-            document.getElementById('authForm').style.display = 'block';
-            document.getElementById('authLoggedIn').style.display = 'none';
-        }
-    
-        /**
-         * 显示已登录面板
-         */
-        function showLoggedInPanel() {
-            document.getElementById('authForm').style.display = 'none';
-            document.getElementById('authLoggedIn').style.display = 'block';
-            document.getElementById('authUserEmail').textContent = currentUser.email;
-            document.getElementById('authSyncStatus').textContent = '✅ 数据已同步';
         }
     
         /**
@@ -3361,7 +3317,7 @@
                 document.getElementById('authSwitchLink').textContent = '去登录';
             } else {
                 isAuthMode = 'login';
-                document.getElementById('authModalTitle').textContent = '👤 登录';
+                document.getElementById('authModalTitle').textContent = '🎰 皮尔卡松的牌运预测';
                 document.getElementById('authSubmitBtn').textContent = '登录';
                 document.getElementById('authSwitchText').textContent = '没有账号？';
                 document.getElementById('authSwitchLink').textContent = '注册新账号';
@@ -3398,7 +3354,6 @@
                 }
     
                 if (result.error) {
-                    // 友好错误提示
                     let msg = result.error.message;
                     if (msg.includes('Invalid login credentials')) msg = '邮箱或密码错误';
                     if (msg.includes('User already registered')) msg = '该邮箱已注册，请直接登录';
@@ -3411,13 +3366,21 @@
     
                 currentUser = result.data.user;
                 updateAuthButton();
+    
+                // 登录成功：从云端加载数据
+                const cloudLoaded = await loadCloudData();
+                if (!cloudLoaded) {
+                    // 云端无数据 → 新用户，给新手礼包
+                    totalChipsEarned = 100;
+                    inventory['accelerate'] = { count: 3, name: '⚡ 加速卡 x3', desc: '下次抽卡动画速度翻倍', icon: '⚡', item: shopItems.find(i => i.id === 'accelerate') || { id: 'accelerate', count: 3 } };
+                    inventory['lucky-charm'] = { count: 1, name: '🍀 幸运符', desc: '下次抽卡稀有率 +15%', icon: '🍀', item: shopItems.find(i => i.id === 'lucky-charm') || { id: 'lucky-charm', count: 1 } };
+                    saveData(); // 保存默认数据+新手礼包到云端
+                    setTimeout(() => showTooltip('🎁 新手礼包已到账：加速卡×3、幸运符×1！', 'success', 5000), 500);
+                }
+    
+                // 关闭登录弹窗，进入游戏
+                document.getElementById('authModal').classList.remove('active');
                 showTooltip(isAuthMode === 'login' ? '🎉 登录成功！' : '🎉 注册成功！', 'success', 3000);
-    
-                // 登录后从云端拉取数据
-                await syncFromCloud();
-    
-                // 切换到已登录面板
-                showLoggedInPanel();
             } catch (err) {
                 console.error('认证错误:', err);
                 showTooltip('网络错误，请重试', 'error', 3000);
@@ -3428,15 +3391,7 @@
         }
     
         /**
-         * 游客继续
-         */
-        function continueAsGuest() {
-            closeAuthModal();
-            showTooltip('以游客模式继续，数据仅存于本地', 'info', 3000);
-        }
-    
-        /**
-         * 退出登录
+         * 退出登录：清空本地数据，回到登录界面
          */
         async function handleLogout() {
             try {
@@ -3445,9 +3400,83 @@
                 console.error('登出错误:', e);
             }
             currentUser = null;
+    
+            // 清空本地缓存数据
+            localStorage.removeItem(GameState.STORAGE_KEY);
+            localStorage.removeItem('pierresCasinoLastSave');
+    
+            // 重置所有游戏变量为默认值
+            resetGameToDefaults();
+    
+            // 显示登录弹窗
+            showLoginForm();
+            document.getElementById('authModal').classList.add('active');
             updateAuthButton();
-            closeAuthModal();
-            showTooltip('已退出登录，数据保留在本地', 'info', 3000);
+            showTooltip('已退出登录', 'info', 3000);
+        }
+    
+        /**
+         * 重置游戏变量为默认值（登出时使用）
+         */
+        function resetGameToDefaults() {
+            chips = 100;
+            history = [];
+            ownedSounds = { jazz: false, electronic: false };
+            ownedSkins = {};
+            currentSkin = 'default';
+            accelerateCount = 0;
+            lastPayday = new Date();
+            consecutiveHighLuck = 0;
+            totalDraws = 0;
+            totalChipsEarned = 0;
+            skinsCollected = 0;
+            inventory = {};
+            dailyTasks = {
+                checkIn: { done: false, reward: 10, name: '每日签到', desc: '首次打开游戏' },
+                draw5: { done: false, reward: 20, name: '抽卡达人', desc: '抽卡 5 次', count: 0, target: 5 },
+                legend: { done: false, reward: 30, name: '传说猎手', desc: '抽到传说牌' },
+                combo5: { done: false, reward: 25, name: '连击大师', desc: '达成 5 连击' }
+            };
+            lastCheckInDate = '';
+            lastWheelTime = 0;
+            miningStart = Date.now();
+            sharedCount = 0;
+            dailyChallenges = {
+                speed: { used: 0, max: 3, name: '速抽挑战', desc: '10 秒内抽 3 次' },
+                accuracy: { used: 0, max: 3, name: '精准挑战', desc: '连续 3 次中运以上' },
+                combo: { used: 0, max: 3, name: '连击挑战', desc: '单次达成 10 连击' }
+            };
+            chestKeys = 0;
+            consecutiveDraws = 0;
+            comboLevel = 0;
+            comboMultiplier = 1;
+            comboRareBonus = 0;
+            luckyCharmActive = false;
+    
+            // 重置成就
+            Object.keys(achievements).forEach(key => {
+                achievements[key].unlocked = false;
+                if (achievements[key].progress !== undefined) achievements[key].progress = 0;
+                if (achievements[key].streak !== undefined) achievements[key].streak = 0;
+            });
+    
+            // 重置商店物品状态
+            shopItems.forEach(item => {
+                if (item.type !== 'consumable') item.owned = false;
+            });
+    
+            // 重置皮肤
+            Object.keys(skins).forEach(skinId => {
+                if (skinId !== 'default') skins[skinId].locked = true;
+            });
+    
+            // 刷新 UI
+            updateChipDisplay(false);
+            updateHistoryDisplay();
+            applySkin('default');
+            updateMiningButton();
+            updateInventoryBadge();
+            document.getElementById('chipCount').textContent = '100';
         }
     
         /**
@@ -3462,69 +3491,88 @@
                 btn.classList.add('auth-btn-logged-in');
             } else {
                 btn.textContent = '👤';
-                btn.title = '登录同步数据';
+                btn.title = '请先登录';
                 btn.classList.remove('auth-btn-logged-in');
             }
         }
     
         /**
-         * 从云端同步数据到本地
+         * 显示登录表单
          */
-        async function syncFromCloud() {
-            if (!currentUser || isSyncing) return;
-            isSyncing = true;
+        function showLoginForm() {
+            isAuthMode = 'login';
+            document.getElementById('authModalTitle').textContent = '🎰 皮尔卡松的牌运预测';
+            document.getElementById('authSubmitBtn').textContent = '登录';
+            document.getElementById('authSwitchText').textContent = '没有账号？';
+            document.getElementById('authSwitchLink').textContent = '注册新账号';
+            document.getElementById('authForm').style.display = 'block';
+            document.getElementById('authLoggedIn').style.display = 'none';
+        }
+    
+        /**
+         * 显示已登录面板
+         */
+        function showLoggedInPanel() {
+            document.getElementById('authForm').style.display = 'none';
+            document.getElementById('authLoggedIn').style.display = 'block';
+            document.getElementById('authUserEmail').textContent = currentUser.email;
+        }
+    
+        /**
+         * 从云端加载数据（登录后的唯一数据源）
+         * @returns {boolean} 是否成功加载到云端数据
+         */
+        async function loadCloudData() {
+            if (!currentUser) return false;
     
             try {
                 const { data, error } = await supabaseClient
                     .from('game_data')
-                    .select('data, updated_at')
+                    .select('data')
                     .eq('user_id', currentUser.id)
                     .single();
     
                 if (error && error.code !== 'PGRST116') {
                     console.error('云端数据读取失败:', error);
-                    showTooltip('⚠️ 云端数据读取失败', 'error', 3000);
-                    return;
+                    return false;
                 }
     
                 if (data && data.data) {
-                    // 有云端数据，与本地合并
-                    const cloudData = data.data;
-                    const cloudTime = new Date(data.updated_at).getTime();
-                    const localTime = localStorage.getItem('pierresCasinoLastSave');
-                    const localTs = localTime ? parseInt(localTime) : 0;
+                    // 写入 localStorage 缓存，然后通过 GameState.load() 加载到内存
+                    localStorage.setItem(GameState.STORAGE_KEY, JSON.stringify(data.data));
+                    GameState.load();
     
-                    if (cloudTime > localTs) {
-                        // 云端更新 → 覆盖本地
-                        applyCloudData(cloudData);
-                        showTooltip('☁️ 已从云端同步数据', 'success', 3000);
-                    } else {
-                        // 本地更新 → 上传到云端
-                        await syncToCloud();
+                    // 刷新 UI
+                    updateChipDisplay(false);
+                    updateHistoryDisplay();
+                    updateBgmButton();
+                    applySkin(currentSkin);
+                    checkAchievements();
+                    updateMiningButton();
+                    updateWheelCooldown();
+                    if (Object.keys(inventory).length > 0) {
+                        updateInventoryBadge();
                     }
-                } else {
-                    // 云端无数据 → 上传本地数据
-                    await syncToCloud();
+                    return true;
                 }
+    
+                // 云端无数据
+                return false;
             } catch (err) {
-                console.error('同步错误:', err);
-            } finally {
-                isSyncing = false;
+                console.error('加载云端数据错误:', err);
+                return false;
             }
         }
     
         /**
-         * 将本地数据同步到云端
+         * 将数据保存到云端（每次 saveData 时自动调用）
          */
-        async function syncToCloud() {
-            if (!currentUser || isSyncing) return;
-            isSyncing = true;
+        async function saveToCloud() {
+            if (!currentUser || isSaving) return;
+            isSaving = true;
     
             try {
-                // 先保存一次最新数据到 localStorage
-                saveData();
-    
-                // 读取 localStorage 中的原始数据
+                // 读取 localStorage 中的最新数据
                 const saved = localStorage.getItem(GameState.STORAGE_KEY);
                 const gameData = saved ? JSON.parse(saved) : {};
     
@@ -3549,58 +3597,27 @@
                         .insert({ user_id: currentUser.id, data: gameData });
                     if (error) throw error;
                 }
-    
-                // 记录同步时间
-                localStorage.setItem('pierresCasinoLastSave', Date.now().toString());
-    
-                const statusEl = document.getElementById('authSyncStatus');
-                if (statusEl) statusEl.textContent = '✅ 数据已同步';
-                showTooltip('☁️ 数据已同步到云端！', 'success', 3000);
             } catch (err) {
-                console.error('上传云端失败:', err);
-                const statusEl = document.getElementById('authSyncStatus');
-                if (statusEl) statusEl.textContent = '⚠️ 同步失败，请重试';
-                showTooltip('⚠️ 同步失败', 'error', 3000);
+                console.error('保存到云端失败:', err);
             } finally {
-                isSyncing = false;
+                isSaving = false;
             }
         }
     
         /**
-         * 将云端数据应用到本地
-         */
-        function applyCloudData(cloudData) {
-            // 写入 localStorage 然后重新加载
-            localStorage.setItem(GameState.STORAGE_KEY, JSON.stringify(cloudData));
-            GameState.load();
-    
-            // 刷新 UI
-            updateChipDisplay(false);
-            updateHistoryDisplay();
-            updateBgmButton();
-            applySkin(currentSkin);
-            checkAchievements();
-            updateMiningButton();
-            updateWheelCooldown();
-            if (Object.keys(inventory).length > 0) {
-                updateInventoryBadge();
-            }
-        }
-    
-        /**
-         * 自动同步：每次 saveData 时检查是否登录，如果登录则同步到云端
+         * 猴子补丁 saveData：先写本地缓存，再异步写云端
          */
         const _originalSaveData = saveData;
         saveData = function() {
             _originalSaveData();
-            // 如果已登录，异步同步到云端（不阻塞）
-            if (currentUser && !isSyncing) {
-                syncToCloud().catch(err => console.error('自动同步失败:', err));
+            // 异步保存到云端（不阻塞游戏）
+            if (currentUser && !isSaving) {
+                saveToCloud().catch(err => console.error('自动云端保存失败:', err));
             }
         };
     
         /**
-         * 初始化：检查 Supabase 是否已登录
+         * 初始化：检查 Supabase 是否已有登录会话
          */
         (async function initAuth() {
             try {
@@ -3608,11 +3625,27 @@
                 if (session && session.user) {
                     currentUser = session.user;
                     updateAuthButton();
-                    // 静默从云端同步
-                    await syncFromCloud();
+                    // 从云端加载数据
+                    const loaded = await loadCloudData();
+                    if (!loaded) {
+                        // 云端无数据 → 新用户，给新手礼包并保存
+                        totalChipsEarned = 100;
+                        inventory['accelerate'] = { count: 3, name: '⚡ 加速卡 x3', desc: '下次抽卡动画速度翻倍', icon: '⚡', item: shopItems.find(i => i.id === 'accelerate') || { id: 'accelerate', count: 3 } };
+                        inventory['lucky-charm'] = { count: 1, name: '🍀 幸运符', desc: '下次抽卡稀有率 +15%', icon: '🍀', item: shopItems.find(i => i.id === 'lucky-charm') || { id: 'lucky-charm', count: 1 } };
+                        saveData();
+                    }
+                    // 关闭登录弹窗
+                    document.getElementById('authModal').classList.remove('active');
+                } else {
+                    // 未登录 → 显示登录弹窗（阻止游戏）
+                    showLoginForm();
+                    document.getElementById('authModal').classList.add('active');
                 }
             } catch (err) {
                 console.error('初始化认证失败:', err);
+                // 出错也显示登录
+                showLoginForm();
+                document.getElementById('authModal').classList.add('active');
             }
         })();
     
@@ -3623,15 +3656,15 @@
                 updateAuthButton();
             } else if (event === 'SIGNED_OUT') {
                 currentUser = null;
+                resetGameToDefaults();
+                showLoginForm();
+                document.getElementById('authModal').classList.add('active');
                 updateAuthButton();
             }
         });
     
         // 暴露认证相关全局函数
         window.handleAuthBtnClick = handleAuthBtnClick;
-        window.closeAuthModal = closeAuthModal;
         window.toggleAuthMode = toggleAuthMode;
         window.submitAuth = submitAuth;
-        window.continueAsGuest = continueAsGuest;
         window.handleLogout = handleLogout;
-        window.syncToCloud = syncToCloud;
