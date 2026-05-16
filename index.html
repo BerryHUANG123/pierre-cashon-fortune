@@ -784,22 +784,22 @@
             background: rgba(255, 215, 0, 0.6);
         }
 
-        /* 自定义滚动条样式 */
-        .shop-grid::-webkit-scrollbar {
+        /* 通用滚动条样式 - 所有可滚动面板复用 */
+        .custom-scrollbar::-webkit-scrollbar {
             width: 8px;
         }
 
-        .shop-grid::-webkit-scrollbar-track {
+        .custom-scrollbar::-webkit-scrollbar-track {
             background: rgba(255, 215, 0, 0.1);
             border-radius: 4px;
         }
 
-        .shop-grid::-webkit-scrollbar-thumb {
+        .custom-scrollbar::-webkit-scrollbar-thumb {
             background: rgba(255, 215, 0, 0.4);
             border-radius: 4px;
         }
 
-        .shop-grid::-webkit-scrollbar-thumb:hover {
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 215, 0, 0.6);
         }
 
@@ -923,11 +923,6 @@
         .shop-grid-btn.owned {
             background: linear-gradient(135deg, #ffd700, #ff8c00);
             cursor: default;
-        }
-
-        /* 隐藏旧的列表样式 */
-        .shop-item {
-            display: none;
         }
 
         .shop-title, .skin-library-title {
@@ -2373,6 +2368,7 @@
     </div>
 
     <script>
+        // ==================== 游戏数据 ====================
         const luckCards = [
             {
                 icon: '🎭',
@@ -2448,6 +2444,7 @@
             }
         ];
 
+        // ==================== 游戏状态变量 ====================
         let isShuffling = false;
         let history = [];
         let soundEnabled = true;
@@ -2497,7 +2494,7 @@
 
         // ==================== 多元化筹码获取系统 ====================
 
-        // 每日任务系统
+        // --- 每日任务系统 ---
         let dailyTasks = {
             checkIn: { done: false, reward: 10, name: '每日签到', desc: '首次打开游戏' },
             draw5: { done: false, reward: 20, name: '抽卡达人', desc: '抽卡 5 次', count: 0, target: 5 },
@@ -2506,22 +2503,22 @@
         };
         let lastCheckInDate = '';
 
-        // 幸运轮盘
+        // --- 幸运轮盘 ---
         let lastWheelTime = 0;
         const WHEEL_COOLDOWN = 6 * 60 * 60 * 1000; // 6 小时
 
-        // 挖矿模式
+        // --- 挖矿模式 ---
         let miningStart = Date.now();
         let miningRate = 5; // 每小时 5 筹码
         let maxMiningHours = 24;
         let miningPaused = false;
 
-        // 好友助力
+        // --- 好友助力 ---
         let sharedCount = 0;
         const MAX_SHARE_REWARD = 50;
         const SHARE_REWARD = 5;
 
-        // 挑战模式
+        // --- 挑战模式 ---
         let dailyChallenges = {
             speed: { used: 0, max: 3, name: '速抽挑战', desc: '10 秒内抽 3 次' },
             accuracy: { used: 0, max: 3, name: '精准挑战', desc: '连续 3 次中运以上' },
@@ -2530,15 +2527,15 @@
         let challengeTimer = null;
         let challengeDraws = [];
 
-        // 宝箱系统
+        // --- 宝箱系统 ---
         let chestKeys = 0;
         let chests = [];
 
-        // 节日活动
+        // --- 节日活动 ---
         let activeBonus = 1; // 奖励倍数
         let bonusReason = '';
 
-        // 成就系统
+        // ==================== 成就系统 ====================
         const achievements = {
             firstDraw: {
                 id: 'firstDraw',
@@ -2661,16 +2658,30 @@
             }
         }
 
-        // 特效相关变量
+        // ==================== 特效系统 ====================
         let effectCanvas = null;
         let effectCtx = null;
         let effectAnimationId = null;
         let effectParticles = [];
 
-        // 音效系统 - 使用 Web Audio API 生成音效
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // ==================== 音效系统（延迟初始化）====================
+        let audioContext = null;
 
-        // ==================== 公共 Tooltip 组件 ====================
+        /**
+         * 获取 AudioContext 实例（延迟初始化，兼容浏览器自动播放策略）
+         */
+        function getAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            // 恢复挂起状态（浏览器需要用户交互后才能播放音频）
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            return audioContext;
+        }
+
+        // ==================== UI 公共组件 ====================
         let tooltipTimeout = null;
 
         /**
@@ -4243,13 +4254,13 @@
 
                 const chord = jazzChords[chordIndex];
                 chord.forEach((freq, i) => {
-                    const oscillator = audioContext.createOscillator();
-                    const gainNode = audioContext.createGain();
+                    const oscillator = getAudioContext().createOscillator();
+                    const gainNode = getAudioContext().createGain();
 
                     oscillator.connect(gainNode);
-                    gainNode.connect(audioContext.destination);
+                    gainNode.connect(getAudioContext().destination);
 
-                    const now = audioContext.currentTime + (i * 0.1);
+                    const now = getAudioContext().currentTime + (i * 0.1);
 
                     oscillator.type = 'sine';
                     oscillator.frequency.setValueAtTime(freq, now);
@@ -4301,13 +4312,13 @@
                     return;
                 }
 
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
+                const oscillator = getAudioContext().createOscillator();
+                const gainNode = getAudioContext().createGain();
 
                 oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                gainNode.connect(getAudioContext().destination);
 
-                const now = audioContext.currentTime;
+                const now = getAudioContext().currentTime;
 
                 // 电子低音
                 oscillator.type = 'square';
@@ -4336,7 +4347,7 @@
 
         function stopAllOscillators() {
             // 停止所有活跃的 oscillator
-            const now = audioContext.currentTime;
+            const now = getAudioContext().currentTime;
             activeOscillators.forEach(osc => {
                 try {
                     // 立即停止，不管之前设置的停止时间
@@ -4365,13 +4376,13 @@
         function playSound(type) {
             if (!soundEnabled) return;
 
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
+            const oscillator = getAudioContext().createOscillator();
+            const gainNode = getAudioContext().createGain();
 
             oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            gainNode.connect(getAudioContext().destination);
 
-            const now = audioContext.currentTime;
+            const now = getAudioContext().currentTime;
 
             switch(type) {
                 case 'shuffle':
@@ -4425,13 +4436,13 @@
 
         function playChord(frequencies, duration) {
             frequencies.forEach((freq, index) => {
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
+                const oscillator = getAudioContext().createOscillator();
+                const gainNode = getAudioContext().createGain();
 
                 oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                gainNode.connect(getAudioContext().destination);
 
-                const now = audioContext.currentTime + (index * 0.05);
+                const now = getAudioContext().currentTime + (index * 0.05);
 
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(freq, now);
@@ -4445,13 +4456,13 @@
         }
 
         function playSweep(startFreq, endFreq, duration) {
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
+            const oscillator = getAudioContext().createOscillator();
+            const gainNode = getAudioContext().createGain();
 
             oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
+            gainNode.connect(getAudioContext().destination);
 
-            const now = audioContext.currentTime;
+            const now = getAudioContext().currentTime;
 
             oscillator.type = 'sine';
             oscillator.frequency.setValueAtTime(startFreq, now);
@@ -4557,9 +4568,9 @@
             const cardElement = document.getElementById('card');
             const drawBtn = document.getElementById('drawBtn');
 
-            // 恢复 AudioContext（浏览器需要用户交互才能播放音频）
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
+            // 确保 AudioContext 已初始化（浏览器需要用户交互后才能播放音频）
+            if (getAudioContext().state === 'suspended') {
+                getAudioContext().resume();
             }
 
             playSound('click');
@@ -5400,20 +5411,20 @@
          */
         function playUnlockSound() {
             try {
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
+                const oscillator = getAudioContext().createOscillator();
+                const gainNode = getAudioContext().createGain();
 
                 oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                gainNode.connect(getAudioContext().destination);
 
                 oscillator.frequency.value = 523.25; // C5
                 oscillator.type = 'sine';
 
-                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                gainNode.gain.setValueAtTime(0.3, getAudioContext().currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, getAudioContext().currentTime + 0.5);
 
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.5);
+                oscillator.start(getAudioContext().currentTime);
+                oscillator.stop(getAudioContext().currentTime + 0.5);
             } catch (e) {
                 console.error('音效播放失败:', e);
             }
