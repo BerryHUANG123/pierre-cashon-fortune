@@ -575,7 +575,7 @@
         /* 选中的牌高亮 */
         .fate-card.fate-card-chosen .fate-card-back {
             box-shadow: 0 0 30px rgba(255, 215, 0, 0.7) !important;
-            transform: scale(1.08);
+            transform: rotateY(180deg) scale(1.08);
         }
 
         .fate-card.fate-card-chosen {
