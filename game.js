@@ -6,8 +6,8 @@
                 desc: '拥有大佬级排面，出场即可气场碾压，掌控牌局节奏。',
                 luck: '传说',
                 luckClass: 'luck-legend',
-                probability: 1.5,
-                reward: 50
+                probability: 1.2,
+                reward: 35
             },
             {
                 icon: '🍀',
@@ -15,8 +15,8 @@
                 desc: '今日运势如虹，万事顺遂。任何挑战都将成为你晋升的阶梯。',
                 luck: '极高',
                 luckClass: 'luck-high',
-                probability: 5,
-                reward: 20
+                probability: 4,
+                reward: 15
             },
             {
                 icon: '🚀',
@@ -24,8 +24,8 @@
                 desc: '机遇降临，把握时机。你的决策将带来意想不到的收获。',
                 luck: '高',
                 luckClass: 'luck-high',
-                probability: 15,
-                reward: 20
+                probability: 12,
+                reward: 12
             },
             {
                 icon: '⚡',
@@ -34,7 +34,7 @@
                 luck: '中上',
                 luckClass: 'luck-medium',
                 probability: 25,
-                reward: 8
+                reward: 6
             },
             {
                 icon: '🎯',
@@ -42,8 +42,8 @@
                 desc: '目标明确，行动果断。小风险可能带来大回报。',
                 luck: '中等',
                 luckClass: 'luck-medium',
-                probability: 30,
-                reward: 8
+                probability: 32,
+                reward: 5
             },
             {
                 icon: '🛡️',
@@ -51,8 +51,8 @@
                 desc: '谨慎行事，避免冲动。等待更好的时机再出手。',
                 luck: '中下',
                 luckClass: 'luck-medium',
-                probability: 15,
-                reward: 8
+                probability: 16,
+                reward: 3
             },
             {
                 icon: '⚠️',
@@ -60,8 +60,8 @@
                 desc: '今日需谨慎，有人可能在暗处设局。保持警惕。',
                 luck: '低',
                 luckClass: 'luck-low',
-                probability: 8,
-                reward: 3
+                probability: 7.5,
+                reward: 1
             },
             {
                 icon: '💀',
@@ -69,8 +69,8 @@
                 desc: '今天不是好日子，建议低调行事，避免重大决策。',
                 luck: '极低',
                 luckClass: 'luck-low',
-                probability: 2,
-                reward: 3
+                probability: 2.3,
+                reward: 0
             }
         ];
 
@@ -295,26 +295,27 @@
         let comboMultiplier = 1; // 奖励倍数
         let comboRareBonus = 0; // 稀有率加成
         let lastDrawTime = 0; // 上次抽卡时间（用于判断是否中断连击）
-        const COMBO_TIMEOUT = 5000; // 5 秒内未抽卡则中断连击
+        const COMBO_TIMEOUT = 3500; // 5 秒内未抽卡则中断连击
 
         // ==================== 多元化筹码获取系统 ====================
 
         // --- 每日任务系统 ---
         let dailyTasks = {
-            checkIn: { done: false, reward: 10, name: '每日签到', desc: '首次打开游戏' },
-            draw5: { done: false, reward: 20, name: '抽卡达人', desc: '抽卡 5 次', count: 0, target: 5 },
-            legend: { done: false, reward: 30, name: '传说猎手', desc: '抽到传说牌' },
-            combo5: { done: false, reward: 25, name: '连击大师', desc: '达成 5 连击' }
+            draw15:     { done: false, reward: 25, name: '抽卡达人', desc: '抽卡 15 次', count: 0, target: 15 },
+            legend:     { done: false, reward: 30, name: '传说猎手', desc: '抽到传说牌', charmReward: 1 },
+            combo10:    { done: false, reward: 35, name: '连击大师', desc: '达成 10 连击' },
+            chipGuard:  { done: false, reward: 20, name: '筹码守卫', desc: '单日抽卡净亏损≤10' },
+            luckyWheel3:{ done: false, reward: 15, name: '幸运轮手', desc: '转盘 3 次', count: 0, target: 3 }
         };
         let lastCheckInDate = '';
 
         // --- 幸运轮盘 ---
         let lastWheelTime = 0;
-        const WHEEL_COOLDOWN = 6 * 60 * 60 * 1000; // 6 小时
+        const WHEEL_COOLDOWN = 4 * 60 * 60 * 1000; // 6 小时
 
         // --- 挖矿模式 ---
         let miningStart = Date.now();
-        let miningRate = 5; // 每小时 5 筹码
+        let miningRate = 8; // 每小时 5 筹码
         let maxMiningHours = 24;
         let miningPaused = false;
 
@@ -984,16 +985,16 @@
             // 根据连续抽卡次数计算连击等级
             if (consecutiveDraws >= 10) {
                 comboLevel = 3; // 赌神附体
-                comboMultiplier = 3;
-                comboRareBonus = 100; // 稀有率 +100%
+                comboMultiplier = 1.6;
+                comboRareBonus = 30; // 稀有率 +100%
             } else if (consecutiveDraws >= 5) {
                 comboLevel = 2; // 大暴击
                 comboMultiplier = 2;
                 comboRareBonus = 50; // 稀有率 +50%
             } else if (consecutiveDraws >= 3) {
                 comboLevel = 1; // 小暴击
-                comboMultiplier = 1.5;
-                comboRareBonus = 25; // 稀有率 +25%
+                comboMultiplier = 1.3;
+                comboRareBonus = 15; // 稀有率 +25%
             } else {
                 comboLevel = 0; // 无连击
                 comboMultiplier = 1;
@@ -1194,7 +1195,7 @@
             }
 
             // 更新冷却时间显示
-            document.getElementById('wheelCooldownText').textContent = '6 小时';
+            document.getElementById('wheelCooldownText').textContent = '4 小时';
 
             // 重置轮盘角度
             document.getElementById('wheel').style.transform = 'rotate(0deg)';
@@ -1253,7 +1254,7 @@
 
                 // 奖励定义
                 const rewards = [
-                    { type: 'chips', value: 10, text: '10 筹码' },
+                    { type: 'chips', value: 15, text: '15 筹码' },
                     { type: 'chips', value: 20, text: '20 筹码' },
                     { type: 'chips', value: 30, text: '30 筹码' },
                     { type: 'chips', value: 50, text: '50 筹码' },
@@ -1283,7 +1284,7 @@
                 saveData();
 
                 // 更新冷却显示
-                document.getElementById('wheelCooldownText').textContent = '冷却中 (6 小时)';
+                document.getElementById('wheelCooldownText').textContent = '冷却中 (4 小时)';
 
                 // 2 秒后关闭弹窗
                 setTimeout(() => {
@@ -2328,7 +2329,7 @@
         }
 
         function drawCard() {
-            const drawCost = 5;
+            const drawCost = 7;
 
             if (chips < drawCost) {
                 showTooltip('筹码不足！请等待发薪日补充筹码。', 'error', 3500);
@@ -2444,7 +2445,7 @@
                         cardElement.innerHTML = `
                             <div class="card-icon">🎴</div>
                             <div class="card-title">准备就绪</div>
-                            <div class="card-desc">点击按钮抽取你的今日牌运<br><span style="color: #ffd700; font-size: 0.85em;">消耗：5 筹码</span></div>
+                            <div class="card-desc">点击按钮抽取你的今日牌运<br><span style="color: #ffd700; font-size: 0.85em;">消耗：7 筹码</span></div>
                         `;
                     }, 2000);
                 }
@@ -3121,10 +3122,12 @@
             if (lastCheckInDate !== today) {
                 // 重置每日任务
                 dailyTasks = {
-                    watchAd: { done: false, reward: 10, name: '观看广告', desc: '观看 1 条广告' },
-                    share: { done: false, reward: 20, name: '分享游戏', desc: '分享给好友' },
-                    login: { done: false, reward: 30, name: '每日登录', desc: '每日首次登录' }
-                };
+            draw15:     { done: false, reward: 25, name: '抽卡达人', desc: '抽卡 15 次', count: 0, target: 15 },
+            legend:     { done: false, reward: 30, name: '传说猎手', desc: '抽到传说牌', charmReward: 1 },
+            combo10:    { done: false, reward: 35, name: '连击大师', desc: '达成 10 连击' },
+            chipGuard:  { done: false, reward: 20, name: '筹码守卫', desc: '单日抽卡净亏损≤10' },
+            luckyWheel3:{ done: false, reward: 15, name: '幸运轮手', desc: '转盘 3 次', count: 0, target: 3 }
+        };
                 lastCheckInDate = today;
                 saveData();
             }
