@@ -1497,15 +1497,6 @@
             box-shadow: 0 5px 16px rgba(39, 174, 96, 0.4);
         }
 
-        .bonus-btn.wheel {
-            background: linear-gradient(135deg, #27ae60, #1e8449);
-            box-shadow: 0 3px 10px rgba(39, 174, 96, 0.25);
-        }
-
-        .bonus-btn.wheel:hover {
-            box-shadow: 0 5px 16px rgba(39, 174, 96, 0.4);
-        }
-
         @media (max-width: 380px) {
             .bonus-buttons {
                 gap: 8px;
