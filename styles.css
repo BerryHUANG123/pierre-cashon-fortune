@@ -330,45 +330,25 @@
             background: var(--skin-button-gradient);
             color: #1a1a2e;
             border: none;
-            padding: 15px 40px;
-            font-size: 1.3em;
+            padding: 13px 32px;
+            font-size: 1.15em;
             font-weight: bold;
             border-radius: 50px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 20px rgba(var(--skin-accent-rgb), 0.3);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin: 10px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 15px rgba(var(--skin-accent-rgb), 0.3);
+            margin: 6px;
         }
 
         .btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(var(--skin-accent-rgb), 0.5);
-            background: var(--skin-button-gradient);
-        }
-
-        .btn:hover::before {
-            opacity: 1;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 22px rgba(var(--skin-accent-rgb), 0.5);
+            filter: brightness(1.05);
         }
 
         .btn:active {
             transform: translateY(0);
+            filter: brightness(0.95);
         }
 
         .btn:disabled {
@@ -379,13 +359,14 @@
 
         .btn-shop {
             background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
-            font-size: 1.1em;
-            padding: 12px 30px;
-            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.3);
+            padding: 13px 32px;
+            font-size: 1.15em;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
         }
 
         .btn-shop:hover {
-            box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5) !important;
+            box-shadow: 0 6px 22px rgba(255, 107, 107, 0.5);
+            filter: brightness(1.05);
         }
 
         .history {
@@ -1462,82 +1443,80 @@
         /* 功能按钮组 */
         .bonus-buttons {
             display: flex;
-            gap: 10px;
-            margin: 15px 0;
+            gap: 12px;
+            margin: 12px auto;
             justify-content: center;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            max-width: 340px;
         }
 
         .bonus-btn {
+            flex: 1 1 0;
+            max-width: 164px;
+            min-width: 120px;
+            height: 40px;
             background: linear-gradient(135deg, #9b59b6, #8e44ad);
             color: #fff;
             border: none;
-            padding: 12px 24px;
-            border-radius: 20px;
+            border-radius: 10px;
             cursor: pointer;
-            font-size: 1em;
+            font-size: 0.92em;
             font-weight: bold;
-            transition: all 0.3s ease;
+            transition: all 0.25s ease;
             white-space: nowrap;
-            box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
-            min-width: 160px;
+            box-shadow: 0 3px 10px rgba(155, 89, 182, 0.25);
             text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .bonus-btn::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
         }
 
         .bonus-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(155, 89, 182, 0.5);
-            background: linear-gradient(135deg, #a56ac8, #9b59b6);
-        }
-
-        .bonus-btn:hover::before {
-            opacity: 1;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 16px rgba(155, 89, 182, 0.4);
+            filter: brightness(1.1);
         }
 
         .bonus-btn:active {
-            transform: translateY(-1px);
+            transform: translateY(0);
+            filter: brightness(0.95);
         }
 
         .bonus-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none !important;
+            filter: grayscale(0.3);
         }
 
         .bonus-btn.mining {
             background: linear-gradient(135deg, #27ae60, #1e8449);
-            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+            box-shadow: 0 3px 10px rgba(39, 174, 96, 0.25);
         }
 
         .bonus-btn.mining:hover {
-            box-shadow: 0 8px 25px rgba(39, 174, 96, 0.5);
-            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            box-shadow: 0 5px 16px rgba(39, 174, 96, 0.4);
         }
 
         .bonus-btn.wheel {
             background: linear-gradient(135deg, #e74c3c, #c0392b);
-            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+            box-shadow: 0 3px 10px rgba(231, 76, 60, 0.25);
         }
 
         .bonus-btn.wheel:hover {
-            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.5);
-            background: linear-gradient(135deg, #ff6b6b, #e74c3c);
+            box-shadow: 0 5px 16px rgba(231, 76, 60, 0.4);
+        }
+
+        @media (max-width: 380px) {
+            .bonus-buttons {
+                gap: 8px;
+                max-width: 100%;
+            }
+            .bonus-btn {
+                min-width: 0;
+                font-size: 0.85em;
+            }
         }
 
         /* 我的物品面板 */
