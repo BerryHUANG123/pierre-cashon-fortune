@@ -3425,6 +3425,34 @@
             document.getElementById('authModal').classList.add('active');
             updateAuthButton();
             showTooltip('已退出登录', 'info', 3000);
+
+            // 退出登录后隐藏关闭按钮
+            document.getElementById('authCloseBtn').style.display = 'none';
+        }
+
+        /**
+         * 关闭认证弹窗（仅已登录时可关闭）
+         */
+        function closeAuthModal() {
+            if (currentUser) {
+                document.getElementById('authModal').classList.remove('active');
+            }
+        }
+
+        /**
+         * 退出登录确认
+         */
+        function confirmLogout() {
+            document.getElementById('authLoggedIn').style.display = 'none';
+            document.getElementById('authLogoutConfirm').style.display = 'block';
+        }
+
+        /**
+         * 取消退出登录
+         */
+        function cancelLogout() {
+            document.getElementById('authLogoutConfirm').style.display = 'none';
+            document.getElementById('authLoggedIn').style.display = 'block';
         }
     
         /**
@@ -3519,6 +3547,8 @@
             document.getElementById('authSwitchLink').textContent = '注册新账号';
             document.getElementById('authForm').style.display = 'block';
             document.getElementById('authLoggedIn').style.display = 'none';
+            document.getElementById('authLogoutConfirm').style.display = 'none';
+            document.getElementById('authCloseBtn').style.display = 'none';
         }
     
         /**
@@ -3527,6 +3557,8 @@
         function showLoggedInPanel() {
             document.getElementById('authForm').style.display = 'none';
             document.getElementById('authLoggedIn').style.display = 'block';
+            document.getElementById('authLogoutConfirm').style.display = 'none';
+            document.getElementById('authCloseBtn').style.display = 'block';
             document.getElementById('authUserEmail').textContent = currentUser.email;
         }
     
@@ -3812,3 +3844,6 @@
         window.toggleAuthMode = toggleAuthMode;
         window.submitAuth = submitAuth;
         window.handleLogout = handleLogout;
+        window.closeAuthModal = closeAuthModal;
+        window.confirmLogout = confirmLogout;
+        window.cancelLogout = cancelLogout;

@@ -221,6 +221,7 @@
 
     <!-- 登录/注册弹窗（强制登录，不可关闭） -->
     <div class="auth-modal active" id="authModal">
+        <button class="auth-close-btn" id="authCloseBtn" onclick="closeAuthModal()" title="关闭">✕</button>
         <div class="auth-content">
             <div class="auth-header">
                 <h2 class="auth-title" id="authModalTitle">🎰 皮尔卡松的牌运预测</h2>
@@ -247,7 +248,15 @@
                     <div class="auth-avatar">👤</div>
                     <div class="auth-user-email" id="authUserEmail">user@email.com</div>
                 </div>
-                <button class="auth-logout-btn" onclick="handleLogout()">退出登录</button>
+                <button class="auth-logout-btn" id="authLogoutBtn" onclick="confirmLogout()">退出登录</button>
+                <button class="auth-back-btn" onclick="closeAuthModal()">返回游戏</button>
+            </div>
+            <!-- 退出登录确认 -->
+            <div class="auth-logout-confirm" id="authLogoutConfirm" style="display: none;">
+                <div class="auth-logout-confirm-text">确定要退出登录吗？</div>
+                <p class="auth-logout-confirm-sub">退出后需要重新登录才能继续游戏</p>
+                <button class="auth-logout-confirm-btn" onclick="handleLogout()">确认退出</button>
+                <button class="auth-back-btn" onclick="cancelLogout()">取消</button>
             </div>
         </div>
     </div>

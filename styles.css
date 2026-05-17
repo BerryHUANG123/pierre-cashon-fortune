@@ -2493,6 +2493,84 @@
             background: rgba(244, 67, 54, 0.1);
         }
 
+        /* 关闭按钮 */
+        .auth-close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 4002;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: #aaa;
+            font-size: 18px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: none;
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+
+        .auth-close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        /* 返回游戏按钮 */
+        .auth-back-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            background: transparent;
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            border-radius: 12px;
+            color: #ffd700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .auth-back-btn:hover {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        /* 退出登录确认 */
+        .auth-logout-confirm {
+            text-align: center;
+        }
+
+        .auth-logout-confirm-text {
+            color: #fff;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .auth-logout-confirm-sub {
+            color: #999;
+            font-size: 13px;
+            margin: 0 0 20px 0;
+        }
+
+        .auth-logout-confirm-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .auth-logout-confirm-btn:hover {
+            opacity: 0.9;
+            box-shadow: 0 0 15px rgba(244, 67, 54, 0.5);
+        }
+
         /* 用户状态指示器（按钮旁） */
         .auth-btn-logged-in {
             border-color: #4caf50 !important;
