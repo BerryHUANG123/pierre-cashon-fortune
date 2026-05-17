@@ -1451,9 +1451,7 @@
         }
 
         .bonus-btn {
-            flex: 1 1 0;
-            max-width: 164px;
-            min-width: 120px;
+            width: 150px;
             height: 40px;
             background: linear-gradient(135deg, #9b59b6, #8e44ad);
             color: #fff;
