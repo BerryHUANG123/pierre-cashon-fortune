@@ -1208,13 +1208,7 @@ function updateConsecutiveHighLuck(luck) {
 function checkDailyReset() {
     const today = new Date().toDateString();
     if (lastCheckInDate !== today) {
-        dailyTasks = {
-            draw15:     { done: false, reward: 25, name: '抽卡达人', desc: '抽卡 15 次', count: 0, target: 15 },
-            legend:     { done: false, reward: 30, name: '传说猎手', desc: '抽到传说牌', charmReward: 1 },
-            combo10:    { done: false, reward: 35, name: '连击大师', desc: '达成 10 连击' },
-            chipGuard:  { done: false, reward: 20, name: '筹码守卫', desc: '单日抽卡净亏损≤10' },
-            luckyWheel3:{ done: false, reward: 15, name: '幸运轮手', desc: '转盘 3 次', count: 0, target: 3 }
-        };
+        dailyTasks = createFreshDailyTasks();
         lastCheckInDate = today;
         saveData();
     }

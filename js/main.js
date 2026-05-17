@@ -147,20 +147,11 @@ function resetGameToDefaults() {
     totalChipsEarned = 0;
     skinsCollected = 0;
     inventory = {};
-    dailyTasks = {
-        checkIn: { done: false, reward: 10, name: '每日签到', desc: '首次打开游戏' },
-        draw5: { done: false, reward: 20, name: '抽卡达人', desc: '抽卡 5 次', count: 0, target: 5 },
-        legend: { done: false, reward: 30, name: '传说猎手', desc: '抽到传说牌' },
-        combo5: { done: false, reward: 25, name: '连击大师', desc: '达成 5 连击' }
-    };
+    dailyTasks = createFreshDailyTasks();
     lastCheckInDate = '';
     miningStart = Date.now();
     sharedCount = 0;
-    dailyChallenges = {
-        speed: { used: 0, max: 3, name: '速抽挑战', desc: '10 秒内抽 3 次' },
-        accuracy: { used: 0, max: 3, name: '精准挑战', desc: '连续 3 次中运以上' },
-        combo: { used: 0, max: 3, name: '连击挑战', desc: '单次达成 10 连击' }
-    };
+    dailyChallenges = createFreshDailyChallenges();
     chestKeys = 0;
     consecutiveDraws = 0;
     comboLevel = 0;
@@ -168,19 +159,10 @@ function resetGameToDefaults() {
     comboRareBonus = 0;
     luckyCharmActive = false;
 
-    Object.keys(achievements).forEach(key => {
-        achievements[key].unlocked = false;
-        if (achievements[key].progress !== undefined) achievements[key].progress = 0;
-        if (achievements[key].streak !== undefined) achievements[key].streak = 0;
-    });
-
-    shopItems.forEach(item => {
-        if (item.type !== 'consumable') item.owned = false;
-    });
-
-    Object.keys(skins).forEach(skinId => {
-        if (skinId !== 'default') skins[skinId].locked = true;
-    });
+    initOwnedSkins();
+    initSkins();
+    initShopItems();
+    initAchievements();
 
     updateChipDisplay(false);
     updateHistoryDisplay();
