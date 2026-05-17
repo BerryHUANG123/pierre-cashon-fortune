@@ -78,7 +78,7 @@
                 <!-- 多元化筹码获取按钮 -->
                 <div class="bonus-buttons">
                     <button class="bonus-btn mining" onclick="collectMining()" id="miningBtn">⛏️ 领取挖矿</button>
-                    <button class="bonus-btn mining" onclick="spinWheel()" id="wheelBtn">🎡 幸运轮盘</button>
+                    <button class="bonus-btn mining" onclick="openSlotMachine()" id="wheelBtn">🎰 老虎机</button>
                 </div>
 
                 <p class="signature">— 皮尔卡松，员工杀手</p>
@@ -123,45 +123,51 @@
         </div>
     </div>
 
-    <!-- 幸运轮盘弹窗 -->
-    <div class="wheel-modal" id="wheelModal">
-        <div class="wheel-overlay" onclick="closeWheelModal()"></div>
-        <div class="wheel-content">
-            <button class="wheel-close" onclick="closeWheelModal()">×</button>
+    <!-- 老虎机弹窗 -->
+    <div class="slot-machine-modal" id="slotMachineModal">
+        <div class="slot-overlay" onclick="closeSlotMachine()"></div>
+        <div class="slot-content">
+            <button class="slot-close" onclick="closeSlotMachine()">×</button>
 
-            <div class="wheel-header">
-                <h2 class="wheel-title">🎡 幸运轮盘</h2>
-                <p class="wheel-subtitle">转动轮盘，赢取丰厚奖励！</p>
+            <div class="slot-header">
+                <h2 class="slot-title">🎰 经典老虎机</h2>
+                <p class="slot-subtitle">无冷却 · 纯靠运气与胆量</p>
             </div>
 
-            <div class="wheel-container">
-                <!-- 外部固定指针 -->
-                <div class="wheel-pointer"></div>
-
-                <!-- 转盘 -->
-                <div class="wheel" id="wheel">
-                    <!-- 奖品标签 - 8 等份，每份 45 度 -->
-                    <div class="wheel-label" style="transform: rotate(22.5deg) translate(0, -130px) rotate(-22.5deg);">10 筹码</div>
-                    <div class="wheel-label" style="transform: rotate(67.5deg) translate(0, -130px) rotate(-67.5deg);">20 筹码</div>
-                    <div class="wheel-label" style="transform: rotate(112.5deg) translate(0, -130px) rotate(-112.5deg);">30 筹码</div>
-                    <div class="wheel-label" style="transform: rotate(157.5deg) translate(0, -130px) rotate(-157.5deg);">50 筹码</div>
-                    <div class="wheel-label" style="transform: rotate(202.5deg) translate(0, -130px) rotate(-202.5deg);">80 筹码</div>
-                    <div class="wheel-label" style="transform: rotate(247.5deg) translate(0, -130px) rotate(-247.5deg);">100 筹码</div>
-                    <div class="wheel-label" style="transform: rotate(292.5deg) translate(0, -130px) rotate(-292.5deg);">加速卡</div>
-                    <div class="wheel-label" style="transform: rotate(337.5deg) translate(0, -130px) rotate(-337.5deg);">免费抽卡</div>
-
-                    <!-- 中心装饰 -->
-                    <div class="wheel-center">🎰</div>
+            <div class="slot-paytable">
+                <div class="slot-paytable-title">💰 赔付表</div>
+                <div class="slot-paytable-grid">
+                    <div class="slot-pay-item jackpot"><span>💎💎💎</span> JACKPOT 1000</div>
+                    <div class="slot-pay-item"><span>7️⃣7️⃣7️⃣</span> 200</div>
+                    <div class="slot-pay-item"><span>⭐⭐⭐</span> 100</div>
+                    <div class="slot-pay-item"><span>🔔🔔🔔</span> 50</div>
+                    <div class="slot-pay-item"><span>🍊🍊🍊</span> 30</div>
+                    <div class="slot-pay-item"><span>🍒🍒🍒</span> 15</div>
+                    <div class="slot-pay-item"><span>任意两个相同</span> 5</div>
                 </div>
             </div>
 
-            <div class="wheel-controls">
-                <button class="wheel-spin-btn" id="wheelSpinBtn" onclick="startWheelSpin()">🎰 开始转动</button>
+            <div class="slot-reels-container" id="slotReelsContainer">
+                <div class="slot-reel" id="slotReel0">
+                    <div class="slot-reel-inner" id="slotReelInner0"></div>
+                </div>
+                <div class="slot-reel" id="slotReel1">
+                    <div class="slot-reel-inner" id="slotReelInner1"></div>
+                </div>
+                <div class="slot-reel" id="slotReel2">
+                    <div class="slot-reel-inner" id="slotReelInner2"></div>
+                </div>
             </div>
 
-            <div class="wheel-info">
-                <p>🕐 冷却时间：<span id="wheelCooldownText">6 小时</span></p>
-                <p>🎁 奖励范围：10-100 筹码 + 特殊道具</p>
+            <div class="slot-result" id="slotResult"></div>
+
+            <div class="slot-controls">
+                <button class="slot-spin-btn" id="slotSpinBtn" onclick="spinSlotMachine()">🎰 拉动拉杆 10筹码</button>
+            </div>
+
+            <div class="slot-info">
+                <p>💰 每次旋转消耗 <strong>10 筹码</strong></p>
+                <p class="slot-chips-display">当前筹码：<span id="slotChipsDisplay">100</span></p>
             </div>
         </div>
     </div>

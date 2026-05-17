@@ -1,4 +1,4 @@
-        // ==================== 游戏数据 ====================
+﻿        // ==================== 游戏数据 ====================
         const luckCards = [
             {
                 icon: '🎭',
@@ -91,6 +91,29 @@
             reversal: { icon: '⚡', label: '变卦', rewardRange: [-15, -5],class: 'fate-level-reversal' },
             drama:    { icon: '🎭', label: '戏剧', rewardRange: null,     class: 'fate-level-drama' }
         };
+
+        // ==================== 老虎机常量 ====================
+        const SLOT_SYMBOLS = [
+            { emoji: '🍒', weight: 30 },
+            { emoji: '🍊', weight: 25 },
+            { emoji: '🔔', weight: 20 },
+            { emoji: '⭐', weight: 15 },
+            { emoji: '7️⃣', weight: 8 },
+            { emoji: '💎', weight: 2 },
+        ];
+
+        const SLOT_PAYOUTS = {
+            '💎💎💎': { reward: 1000, label: 'JACKPOT!' },
+            '7️⃣7️⃣7️⃣': { reward: 200, label: '三个7!' },
+            '⭐⭐⭐': { reward: 100, label: '三个星星!' },
+            '🔔🔔🔔': { reward: 50, label: '三个铃铛!' },
+            '🍊🍊🍊': { reward: 30, label: '三个桔子!' },
+            '🍒🍒🍒': { reward: 15, label: '三个樱桃!' },
+        };
+
+        const SLOT_COST = 10;
+        const SLOT_SYMBOLS_LIST = SLOT_SYMBOLS.map(s => s.emoji);
+
 
         // 修饰定义
         const FATE_MODIFIERS = [
@@ -269,6 +292,10 @@
                 }
             }, 1000);
         }
+        let slotSpinning = false;
+        let slotReels = [null, null, null];
+        let slotRunningIntervals = [null, null, null];
+
 
         function stopFateTimer() {
             if (fateTimerInterval) {
@@ -593,8 +620,7 @@
                     shopItemsOwned: [],
                     dailyTasks: null, // 使用默认值
                     lastCheckInDate: '',
-                    lastWheelTime: 0,
-                    miningStart: Date.now(),
+                                        miningStart: Date.now(),
                     sharedCount: 0,
                     dailyChallenges: null, // 使用默认值
                     chestKeys: 0,
@@ -644,8 +670,7 @@
                     shopItemsOwned: shopItems.filter(item => item.owned && item.type !== 'consumable').map(item => item.id),
                     dailyTasks: dailyTasks,
                     lastCheckInDate: lastCheckInDate,
-                    lastWheelTime: lastWheelTime,
-                    miningStart: miningStart,
+                                        miningStart: miningStart,
                     sharedCount: sharedCount,
                     dailyChallenges: dailyChallenges,
                     chestKeys: chestKeys,
@@ -702,8 +727,7 @@
                         dailyTasks = { ...dailyTasks, ...data.dailyTasks };
                     }
                     lastCheckInDate = data.lastCheckInDate || '';
-                    lastWheelTime = data.lastWheelTime || 0;
-                    miningStart = data.miningStart || Date.now();
+                                        miningStart = data.miningStart || Date.now();
                     sharedCount = data.sharedCount || 0;
                     if (data.dailyChallenges) {
                         dailyChallenges = { ...dailyChallenges, ...data.dailyChallenges };
@@ -761,9 +785,6 @@
         };
         let lastCheckInDate = '';
 
-        // --- 幸运轮盘 ---
-        let lastWheelTime = 0;
-        const WHEEL_COOLDOWN = 4 * 60 * 60 * 1000; // 6 小时
 
         // --- 挖矿模式 ---
         let miningStart = Date.now();
@@ -1636,115 +1657,14 @@
         /**
          * 打开轮盘弹窗
          */
-        function spinWheel() {
-            const now = Date.now();
-            const cooldownRemaining = lastWheelTime + WHEEL_COOLDOWN - now;
-
-            if (cooldownRemaining > 0) {
-                const minutes = Math.ceil(cooldownRemaining / (1000 * 60));
-                showTooltip(`轮盘冷却中，还有 ${minutes} 分钟`, 'error', 3000);
-                return;
-            }
-
-            // 更新冷却时间显示
-            document.getElementById('wheelCooldownText').textContent = '4 小时';
-
-            // 重置轮盘角度
-            document.getElementById('wheel').style.transform = 'rotate(0deg)';
-            document.getElementById('wheelSpinBtn').disabled = false;
-
-            // 打开弹窗
-            document.getElementById('wheelModal').classList.add('active');
-        }
 
         /**
          * 关闭轮盘弹窗
          */
-        function closeWheelModal() {
-            document.getElementById('wheelModal').classList.remove('active');
-        }
-
-        /**
+                /**
          * 开始旋转轮盘
          */
-        function startWheelSpin() {
-            const wheel = document.getElementById('wheel');
-            const spinBtn = document.getElementById('wheelSpinBtn');
-            const pointer = document.querySelector('.wheel-pointer');
-
-            // 禁用按钮
-            spinBtn.disabled = true;
-            spinBtn.textContent = '🎰 旋转中...';
-
-            // 添加旋转动画效果
-            wheel.classList.add('spinning');
-            pointer.classList.add('bouncing');
-
-            // 计算随机旋转角度（至少旋转 5 圈，最多 10 圈）
-            const minRotations = 5;
-            const maxRotations = 10;
-            const randomRotations = minRotations + Math.random() * (maxRotations - minRotations);
-            const finalAngle = randomRotations * 360 + Math.random() * 360;
-
-            // 旋转轮盘
-            wheel.style.transform = `rotate(${finalAngle}deg)`;
-
-            // 旋转结束后移除动画效果
-            setTimeout(() => {
-                wheel.classList.remove('spinning');
-                pointer.classList.remove('bouncing');
-            }, 3800);
-
-            // 4 秒后停止并显示结果
-            setTimeout(() => {
-                // 计算最终角度（0-360）
-                const actualAngle = finalAngle % 360;
-
-                // 根据角度计算奖励（8 个扇区，每个 45 度）
-                const segmentAngle = 360 / 8;
-                const segmentIndex = Math.floor((360 - actualAngle + segmentAngle / 2) % 360 / segmentAngle);
-
-                // 奖励定义
-                const rewards = [
-                    { type: 'chips', value: 15, text: '15 筹码' },
-                    { type: 'chips', value: 20, text: '20 筹码' },
-                    { type: 'chips', value: 30, text: '30 筹码' },
-                    { type: 'chips', value: 50, text: '50 筹码' },
-                    { type: 'chips', value: 80, text: '80 筹码' },
-                    { type: 'chips', value: 100, text: '100 筹码' },
-                    { type: 'accelerate', value: 1, text: '加速卡 x1' },
-                    { type: 'free', value: 1, text: '免费抽卡' }
-                ];
-
-                const reward = rewards[segmentIndex];
-
-                // 发放奖励（显示 +X 浮动动画）
-                if (reward.type === 'chips') {
-                    chips += reward.value;
-                    updateChipDisplay(true, true, reward.value);
-                    showTooltip(`🎡 幸运轮盘：获得 ${reward.value} 筹码！`, 'success', 3000);
-                } else if (reward.type === 'accelerate') {
-                    accelerateCount += 1;
-                    showTooltip(`🎉 幸运轮盘：获得 加速卡 x1！`, 'success', 3000);
-                } else if (reward.type === 'free') {
-                    showTooltip(`🎉 幸运轮盘：获得 免费抽卡券！`, 'success', 3000);
-                    // 这里可以添加免费抽卡逻辑
-                }
-
-                // 设置冷却时间
-                lastWheelTime = Date.now();
-                saveData();
-
-                // 更新冷却显示
-                document.getElementById('wheelCooldownText').textContent = '冷却中 (4 小时)';
-
-                // 2 秒后关闭弹窗
-                setTimeout(() => {
-                    closeWheelModal();
-                    spinBtn.textContent = '🎰 开始转动';
-                }, 2000);
-            }, 4000);
-        }
+        
 
         // 皮肤定义 - 20 种精选主题（极致浮夸背景图案）
         const skins = {
@@ -2780,6 +2700,166 @@
             return luckCards[3]; // fallback
         }
 
+
+        // ==================== 老虎机函数 ====================
+        function openSlotMachine() {
+            document.getElementById('slotMachineModal').classList.add('active');
+            document.getElementById('slotChipsDisplay').textContent = chips;
+            resetSlotReels();
+        }
+
+        function closeSlotMachine() {
+            document.getElementById('slotMachineModal').classList.remove('active');
+        }
+
+        function resetSlotReels() {
+            for (let i = 0; i < 3; i++) {
+                const inner = document.getElementById('slotReelInner' + i);
+                if (inner) {
+                    inner.style.transition = 'none';
+                    inner.style.transform = 'translateY(0)';
+                }
+                const reel = document.getElementById('slotReel' + i);
+                if (reel) reel.classList.remove('winning');
+                document.getElementById('slotResult').textContent = '';
+                document.getElementById('slotResult').className = 'slot-result';
+            }
+            slotReels = [null, null, null];
+        }
+
+        function spinSlotMachine() {
+            if (slotSpinning) return;
+            if (chips < SLOT_COST) {
+                showTooltip('筹码不足！每次旋转需要 ' + SLOT_COST + ' 筹码', 'error', 3000);
+                return;
+            }
+
+            slotSpinning = true;
+            chips -= SLOT_COST;
+            updateChipDisplay(true, true, -SLOT_COST);
+            document.getElementById('slotChipsDisplay').textContent = chips;
+            document.getElementById('slotSpinBtn').disabled = true;
+            document.getElementById('slotSpinBtn').textContent = '🎰 旋转中...';
+            document.getElementById('slotResult').textContent = '';
+            document.getElementById('slotResult').className = 'slot-result';
+
+            for (let i = 0; i < 3; i++) {
+                startSlotReel(i, 1500 + i * 1500);
+            }
+        }
+
+        function startSlotReel(reelIndex, stopDelay) {
+            const inner = document.getElementById('slotReelInner' + reelIndex);
+            const reel = document.getElementById('slotReel' + reelIndex);
+            if (!inner) return;
+
+            inner.innerHTML = '';
+            const symbolHeight = 120;
+            const symbolCount = 30;
+            for (let i = 0; i < symbolCount; i++) {
+                const sym = document.createElement('div');
+                sym.className = 'slot-symbol';
+                sym.textContent = SLOT_SYMBOLS_LIST[Math.floor(Math.random() * SLOT_SYMBOLS_LIST.length)];
+                inner.appendChild(sym);
+            }
+
+            const finalSymbol = weightedRandomSlot(SLOT_SYMBOLS);
+            slotReels[reelIndex] = finalSymbol;
+
+            inner.style.transition = 'none';
+            inner.style.transform = 'translateY(0)';
+            inner.offsetHeight;
+
+            const targetY = -(symbolCount - 3) * symbolHeight;
+            setTimeout(() => {
+                inner.style.transition = 'transform ' + (stopDelay / 1000 * 0.8) + 's cubic-bezier(0.25, 0.1, 0.25, 1)';
+                inner.style.transform = 'translateY(' + targetY + 'px)';
+                setTimeout(() => {
+                    const symbols = inner.querySelectorAll('.slot-symbol');
+                    if (symbols[symbolCount - 2]) symbols[symbolCount - 2].textContent = finalSymbol;
+                }, stopDelay * 0.6);
+            }, 50);
+
+            setTimeout(() => {
+                const symbols = inner.querySelectorAll('.slot-symbol');
+                if (symbols[symbolCount - 2]) symbols[symbolCount - 2].textContent = finalSymbol;
+                if (reel) reel.classList.remove('spinning');
+                checkAllReelsStopped();
+            }, stopDelay);
+        }
+
+        function weightedRandomSlot(items) {
+            const totalWeight = items.reduce((s, item) => s + item.weight, 0);
+            let r = Math.random() * totalWeight;
+            for (const item of items) {
+                r -= item.weight;
+                if (r <= 0) return item.emoji;
+            }
+            return items[items.length - 1].emoji;
+        }
+
+        function checkAllReelsStopped() {
+            if (slotReels[0] === null || slotReels[1] === null || slotReels[2] === null) return;
+            slotSpinning = false;
+            document.getElementById('slotSpinBtn').disabled = false;
+            document.getElementById('slotSpinBtn').textContent = '🎰 拉动拉杆 ' + SLOT_COST + '筹码';
+            calculateSlotResult();
+        }
+
+        function calculateSlotResult() {
+            const [a, b, c] = slotReels;
+            const key = a + b + c;
+            const resultEl = document.getElementById('slotResult');
+
+            if (SLOT_PAYOUTS[key]) {
+                const payout = SLOT_PAYOUTS[key];
+                chips += payout.reward;
+                updateChipDisplay(true, true, payout.reward);
+                resultEl.textContent = '🎉 ' + payout.label + ' 获得 ' + payout.reward + ' 筹码！';
+                resultEl.className = 'slot-result win';
+                showSlotWinEffect();
+                for (let i = 0; i < 3; i++) {
+                    const reel = document.getElementById('slotReel' + i);
+                    if (reel) reel.classList.add('winning');
+                }
+            } else if (a === b || b === c || a === c) {
+                chips += 5;
+                updateChipDisplay(true, true, 5);
+                resultEl.textContent = '😅 任意两个相同！获得 5 筹码';
+                resultEl.className = 'slot-result win';
+            } else {
+                resultEl.textContent = '💸 谢谢参与，下次好运！';
+                resultEl.className = 'slot-result lose';
+            }
+
+            saveData();
+            document.getElementById('slotChipsDisplay').textContent = chips;
+            totalDraws++;
+            checkAchievements();
+        }
+
+        function showSlotWinEffect() {
+            const flash = document.createElement('div');
+            flash.className = 'slot-win-flash';
+            document.body.appendChild(flash);
+            setTimeout(() => { flash.remove(); }, 1200);
+        }
+
+        function initSlotReels() {
+            for (let i = 0; i < 3; i++) {
+                const inner = document.getElementById('slotReelInner' + i);
+                if (!inner) continue;
+                inner.innerHTML = '';
+                for (let j = 0; j < 3; j++) {
+                    const sym = document.createElement('div');
+                    sym.className = 'slot-symbol';
+                    sym.textContent = SLOT_SYMBOLS_LIST[Math.floor(Math.random() * SLOT_SYMBOLS_LIST.length)];
+                    inner.appendChild(sym);
+                }
+                inner.style.transform = 'translateY(0)';
+            }
+        }
+
         function drawCard() {
             let drawCost = 7;
 
@@ -3023,6 +3103,7 @@
             if (now.getDate() !== lastPayday.getDate()) {
                 chips += 50;
                 updateChipDisplay();
+        if (typeof initSlotReels === "function") initSlotReels();
                 lastPayday = now;
                 showTooltip('发薪日！获得 50 个筹码！', 'success', 4000);
             }
@@ -3541,25 +3622,7 @@
         checkDailyReset();
 
         // 每分钟检查轮盘冷却
-        function updateWheelCooldown() {
-            const btn = document.getElementById('wheelBtn');
-            if (!btn) return;
-
-            const now = Date.now();
-            const cooldownRemaining = lastWheelTime + WHEEL_COOLDOWN - now;
-
-            if (cooldownRemaining > 0) {
-                const minutes = Math.ceil(cooldownRemaining / (1000 * 60));
-                btn.textContent = `🎡 冷却中 (${minutes}分钟)`;
-                btn.disabled = true;
-            } else {
-                btn.textContent = '🎡 幸运轮盘';
-                btn.disabled = false;
-            }
-        }
-        updateWheelCooldown();
-        setInterval(updateWheelCooldown, 60000); // 每分钟更新轮盘状态
-
+                
         // 定期自动保存
         setInterval(saveData, 30000); // 每 30 秒自动保存
 
@@ -3695,6 +3758,11 @@
         // 全局函数（供HTML中的onclick调用）
         window.drawCard = drawCard;
         window.handleFateCardClick = handleFateCardClick;
+        window.openSlotMachine = openSlotMachine;
+        window.closeSlotMachine = closeSlotMachine;
+        window.spinSlotMachine = spinSlotMachine;
+        window.initSlotReels = initSlotReels;
+
         window.closeAchievements = closeAchievements;
         window.openInventory = openInventory;
         window.closeInventory = closeInventory;
@@ -3885,7 +3953,6 @@
                 combo5: { done: false, reward: 25, name: '连击大师', desc: '达成 5 连击' }
             };
             lastCheckInDate = '';
-            lastWheelTime = 0;
             miningStart = Date.now();
             sharedCount = 0;
             dailyChallenges = {
@@ -4126,8 +4193,7 @@
                     applySkin(currentSkin);
                     checkAchievements();
                     updateMiningButton();
-                    updateWheelCooldown();
-                    if (Object.keys(inventory).length > 0) {
+                                        if (Object.keys(inventory).length > 0) {
                         updateInventoryBadge();
                     }
                     return true;
