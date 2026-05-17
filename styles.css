@@ -340,12 +340,31 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             margin: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
         }
 
         .btn:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 30px rgba(var(--skin-accent-rgb), 0.5);
             background: var(--skin-button-gradient);
+        }
+
+        .btn:hover::before {
+            opacity: 1;
         }
 
         .btn:active {
@@ -362,6 +381,11 @@
             background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
             font-size: 1.1em;
             padding: 12px 30px;
+            box-shadow: 0 5px 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-shop:hover {
+            box-shadow: 0 8px 30px rgba(255, 107, 107, 0.5) !important;
         }
 
         .history {
@@ -1447,44 +1471,73 @@
         .bonus-btn {
             background: linear-gradient(135deg, #9b59b6, #8e44ad);
             color: #fff;
-            border: 2px solid #9b59b6;
-            padding: 10px 18px;
-            border-radius: 8px;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 20px;
             cursor: pointer;
-            font-size: 0.9em;
+            font-size: 1em;
             font-weight: bold;
             transition: all 0.3s ease;
             white-space: nowrap;
             box-shadow: 0 4px 15px rgba(155, 89, 182, 0.3);
-            width: 200px;
-            max-width: 200px;
-            min-width: 200px;
+            min-width: 160px;
             text-align: center;
             flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bonus-btn::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
         }
 
         .bonus-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(155, 89, 182, 0.5);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(155, 89, 182, 0.5);
             background: linear-gradient(135deg, #a56ac8, #9b59b6);
+        }
+
+        .bonus-btn:hover::before {
+            opacity: 1;
+        }
+
+        .bonus-btn:active {
+            transform: translateY(-1px);
         }
 
         .bonus-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
+            transform: none !important;
         }
 
         .bonus-btn.mining {
-            background: linear-gradient(135deg, #27ae60, #229954);
-            border-color: #27ae60;
+            background: linear-gradient(135deg, #27ae60, #1e8449);
             box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .bonus-btn.mining:hover {
+            box-shadow: 0 8px 25px rgba(39, 174, 96, 0.5);
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
         }
 
         .bonus-btn.wheel {
             background: linear-gradient(135deg, #e74c3c, #c0392b);
-            border-color: #e74c3c;
             box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .bonus-btn.wheel:hover {
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.5);
+            background: linear-gradient(135deg, #ff6b6b, #e74c3c);
         }
 
         /* 我的物品面板 */
