@@ -50,11 +50,23 @@
                     <div class="payday-timer" id="paydayTimer">下次发薪日：23:59:59</div>
                 </div>
 
-                <div class="card-area">
-                    <div class="card" id="card">
+                <div class="card-area" id="cardArea">
+                    <!-- 待命状态 -->
+                    <div class="card card-idle" id="cardIdle">
                         <div class="card-icon">🎴</div>
                         <div class="card-title">准备就绪</div>
-                        <div class="card-desc">点击按钮抽取你的今日牌运<br><span style="color: #ffd700; font-size: 0.85em;">消耗：5 筹码</span></div>
+                        <div class="card-desc">点击按钮抽取你的今日牌运<br><span style="color: #ffd700; font-size: 0.85em;">消耗：7 筹码</span></div>
+                    </div>
+                    <!-- 牌桌状态（5张牌，JS动态生成） -->
+                    <div class="fate-table" id="fateTable" style="display: none;">
+                        <div class="fate-timer" id="fateTimer">
+                            <svg class="fate-timer-ring" viewBox="0 0 36 36">
+                                <circle class="fate-timer-bg" cx="18" cy="18" r="15.9"/>
+                                <circle class="fate-timer-fill" id="fateTimerFill" cx="18" cy="18" r="15.9"/>
+                            </svg>
+                            <span class="fate-timer-text" id="fateTimerText">5</span>
+                        </div>
+                        <div class="fate-slots" id="fateSlots"></div>
                     </div>
                 </div>
 

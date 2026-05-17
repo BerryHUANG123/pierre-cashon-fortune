@@ -74,6 +74,458 @@
             }
         ];
 
+        // ==================== 命运牌局系统 ====================
+
+        let fateTableActive = false;    // 牌桌是否激活
+        let fateCards = [];             // 当前5张牌数据
+        let fateTimerInterval = null;   // 倒计时定时器
+        let fateNextFree = false;       // 下次免费（锁定修饰）
+        let fateNextDoubleCost = false; // 下次费用翻倍（诅咒修饰）
+        let fateWorstStreak = 0;        // 连续选最差牌计数
+
+        // 命运层级定义
+        const FATE_LEVELS = {
+            major:    { icon: '🌟', label: '大吉', rewardRange: [20, 50], class: 'fate-level-major' },
+            good:     { icon: '✨', label: '中吉', rewardRange: [8, 15],  class: 'fate-level-good' },
+            slight:   { icon: '🌙', label: '小吉', rewardRange: [3, 7],   class: 'fate-level-slight' },
+            reversal: { icon: '⚡', label: '变卦', rewardRange: [-15, -5],class: 'fate-level-reversal' },
+            drama:    { icon: '🎭', label: '戏剧', rewardRange: null,     class: 'fate-level-drama' }
+        };
+
+        // 修饰定义
+        const FATE_MODIFIERS = [
+            { id: 'double',    label: '双倍', weight: 8, cssClass: 'fate-mod-double' },
+            { id: 'triple',    label: '三倍', weight: 3, cssClass: 'fate-mod-triple' },
+            { id: 'flip',      label: '翻转', weight: 5, cssClass: 'fate-mod-flip' },
+            { id: 'immune',    label: '免疫', weight: 4, cssClass: 'fate-mod-immune' },
+            { id: 'chain',     label: '连锁', weight: 4, cssClass: 'fate-mod-chain' },
+            { id: 'bankrupt',  label: '破产', weight: 2, cssClass: 'fate-mod-bankrupt' },
+            { id: 'absorb',    label: '吸收', weight: 3, cssClass: 'fate-mod-absorb' },
+            { id: 'lock',      label: '锁定', weight: 3, cssClass: 'fate-mod-lock' },
+            { id: 'curse',     label: '诅咒', weight: 3, cssClass: 'fate-mod-curse' },
+            { id: 'none',      label: '',     weight: 65, cssClass: '' }
+        ];
+
+        // 特殊事件定义
+        const FATE_EVENTS = {
+            pierce_appear: { icon: '🃏', title: '皮尔卡松降临', desc: '大佬级排面！额外 +30 筹码' },
+            black_swan:    { icon: '💀', title: '黑天鹅事件', desc: '噩梦！失去当前 50% 筹码！' },
+            god_favor:     { icon: '🎰', title: '赌神眷顾', desc: '连续3次最差...下次必定大吉×3！' },
+            fate_wheel:    { icon: '🔄', title: '命运轮转', desc: '命运再次旋转...' }
+        };
+
+        /**
+         * 生成5张命运牌
+         */
+        function generateFateTable() {
+            const cards = [];
+            // 保证1张大吉
+            const levels = ['major'];
+
+            // 分配剩余4张
+            const pool = ['good', 'good', 'slight', 'slight', 'reversal', 'drama'];
+            for (let i = 0; i < 4; i++) {
+                const idx = Math.floor(Math.random() * pool.length);
+                levels.push(pool.splice(idx, 1)[0]);
+            }
+
+            // 打乱顺序
+            for (let i = levels.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [levels[i], levels[j]] = [levels[j], levels[i]];
+            }
+
+            for (let i = 0; i < 5; i++) {
+                const level = levels[i];
+                const levelDef = FATE_LEVELS[level];
+                let baseReward = 0;
+                if (levelDef.rewardRange) {
+                    baseReward = levelDef.rewardRange[0] + Math.floor(Math.random() * (levelDef.rewardRange[1] - levelDef.rewardRange[0] + 1));
+                } else {
+                    // 戏剧牌：随机奖励范围
+                    const dramaRoll = Math.random();
+                    if (dramaRoll < 0.3) baseReward = -(5 + Math.floor(Math.random() * 16));       // 亏损
+                    else if (dramaRoll < 0.7) baseReward = 3 + Math.floor(Math.random() * 13);     // 小赚
+                    else baseReward = 25 + Math.floor(Math.random() * 26);                         // 大赚
+                }
+
+                // 分配修饰
+                const modifier = rollModifier();
+
+                cards.push({
+                    position: i,
+                    fateLevel: level,
+                    baseReward: baseReward,
+                    modifier: modifier.id === 'none' ? null : modifier,
+                    event: null,
+                    finalReward: 0,
+                    revealed: false,
+                    chosen: false
+                });
+            }
+
+            // 如果下次免费（锁定效果），确保此次不应用诅咒
+            if (fateNextFree) fateNextFree = false;
+
+            return cards;
+        }
+
+        /**
+         * 随机分配修饰词
+         */
+        function rollModifier() {
+            const totalWeight = FATE_MODIFIERS.reduce((s, m) => s + m.weight, 0);
+            let r = Math.random() * totalWeight;
+            for (const mod of FATE_MODIFIERS) {
+                r -= mod.weight;
+                if (r <= 0) return mod;
+            }
+            return FATE_MODIFIERS[FATE_MODIFIERS.length - 1];
+        }
+
+        /**
+         * 计算牌的最终奖励
+         */
+        function calculateFinalReward(card, allCards) {
+            let reward = card.baseReward;
+
+            if (!card.modifier) return reward;
+
+            switch (card.modifier.id) {
+                case 'double':
+                    reward *= 2;
+                    break;
+                case 'triple':
+                    reward *= 3;
+                    break;
+                case 'flip':
+                    reward = -reward;
+                    break;
+                case 'bankrupt':
+                    reward = 0;
+                    break;
+                case 'absorb':
+                    // 获得其他4张牌奖励总和的10%
+                    const otherTotal = allCards
+                        .filter(c => c.position !== card.position)
+                        .reduce((s, c) => s + c.baseReward, 0);
+                    reward += Math.round(otherTotal * 0.1);
+                    break;
+                // immune, chain, lock, curse 在结算时特殊处理
+            }
+
+            return reward;
+        }
+
+        /**
+         * 渲染牌桌UI
+         */
+        function renderFateTable() {
+            const slots = document.getElementById('fateSlots');
+            slots.innerHTML = '';
+
+            fateCards.forEach((card, i) => {
+                const el = document.createElement('div');
+                el.className = `fate-card ${FATE_LEVELS[card.fateLevel].class}`;
+                el.dataset.index = i;
+                el.onclick = () => handleFateCardClick(i);
+                el.innerHTML = `
+                    <div class="fate-card-inner">
+                        <div class="fate-card-front"></div>
+                        <div class="fate-card-back">
+                            <div class="fate-card-icon">${FATE_LEVELS[card.fateLevel].icon}</div>
+                            <div class="fate-card-label">${FATE_LEVELS[card.fateLevel].label}</div>
+                            <div class="fate-card-reward" id="fateReward${i}">...</div>
+                            <div class="fate-card-modifier" id="fateMod${i}"></div>
+                        </div>
+                    </div>
+                `;
+                slots.appendChild(el);
+            });
+        }
+
+        /**
+         * 启动倒计时
+         */
+        function startFateTimer(seconds, onTimeout) {
+            const fill = document.getElementById('fateTimerFill');
+            const text = document.getElementById('fateTimerText');
+            let remaining = seconds;
+            const circumference = 2 * Math.PI * 15.9; // ~100
+
+            text.textContent = remaining;
+            fill.style.strokeDasharray = circumference;
+            fill.style.strokeDashoffset = '0';
+
+            fateTimerInterval = setInterval(() => {
+                remaining--;
+                text.textContent = Math.max(0, remaining);
+                fill.style.strokeDashoffset = ((seconds - remaining) / seconds * circumference).toString();
+
+                if (remaining <= 0) {
+                    clearInterval(fateTimerInterval);
+                    fateTimerInterval = null;
+                    onTimeout();
+                }
+            }, 1000);
+        }
+
+        function stopFateTimer() {
+            if (fateTimerInterval) {
+                clearInterval(fateTimerInterval);
+                fateTimerInterval = null;
+            }
+        }
+
+        /**
+         * 处理点击牌
+         */
+        function handleFateCardClick(index) {
+            if (!fateTableActive) return;
+            if (fateCards[index].revealed) return;
+
+            fateTableActive = false;
+            stopFateTimer();
+
+            // 标记选中
+            fateCards[index].chosen = true;
+            const cardEl = document.querySelectorAll('.fate-card')[index];
+            cardEl.classList.add('fate-card-chosen');
+
+            // 计算所有牌的最终奖励
+            fateCards.forEach(card => {
+                card.finalReward = calculateFinalReward(card, fateCards);
+            });
+
+            // 翻开选中的牌
+            setTimeout(() => {
+                flipCard(index, true);
+            }, 300);
+
+            // 1秒后依次翻开其余牌
+            const others = fateCards
+                .map((c, i) => i)
+                .filter(i => i !== index);
+
+            others.forEach((i, delay) => {
+                setTimeout(() => flipCard(i, false), 1000 + delay * 400);
+            });
+
+            // 全部翻完后结算
+            const totalDelay = 1000 + others.length * 400 + 500;
+            setTimeout(() => settleFateResult(index), totalDelay);
+        }
+
+        /**
+         * 翻牌动画
+         */
+        function flipCard(index, isChosen) {
+            const card = fateCards[index];
+            card.revealed = true;
+
+            const cardEl = document.querySelectorAll('.fate-card')[index];
+            cardEl.classList.add('flipped');
+
+            if (!isChosen) {
+                cardEl.classList.add('fate-card-revealed');
+            }
+
+            // 更新牌面内容
+            const rewardEl = document.getElementById(`fateReward${index}`);
+            const modEl = document.getElementById(`fateMod${index}`);
+
+            const rewardText = card.finalReward >= 0
+                ? `+${card.finalReward}`
+                : `${card.finalReward}`;
+            rewardEl.textContent = rewardText;
+            rewardEl.style.color = card.finalReward >= 0 ? '#00ff00' : '#ff4444';
+
+            if (card.modifier) {
+                modEl.textContent = `[${card.modifier.label}]`;
+                modEl.className = `fate-card-modifier ${card.modifier.cssClass}`;
+            }
+        }
+
+        /**
+         * 结算结果
+         */
+        function settleFateResult(chosenIndex) {
+            const chosen = fateCards[chosenIndex];
+            let finalReward = chosen.finalReward;
+
+            // 检查破产修饰：本轮奖励归零
+            if (chosen.modifier && chosen.modifier.id === 'bankrupt') {
+                finalReward = 0;
+            }
+
+            // 应用连击倍数
+            finalReward = Math.floor(finalReward * comboMultiplier);
+
+            // 检查特殊事件
+            checkFateEvent(chosen, finalReward);
+
+            // 应用奖励
+            chips += finalReward;
+            totalChipsEarned += Math.max(0, finalReward);
+            updateChipDisplay(true, true, finalReward);
+
+            // 连击提示
+            if (comboMultiplier > 1) {
+                showTooltip(`连击 ×${comboMultiplier}！奖励 ${finalReward} 筹码`, 'success', 3000);
+            }
+
+            // 处理修饰效果
+            applyFateModifierEffect(chosen);
+
+            // 更新抽卡统计
+            totalDraws++;
+            if (chosen.fateLevel === 'major') {
+                unlockLegendHunter();
+            }
+            updateConsecutiveHighLuck(chosen.fateLevel === 'major' ? '传说' :
+                                       chosen.fateLevel === 'good' ? '极高' :
+                                       chosen.fateLevel === 'slight' ? '高' : '低');
+            checkAchievements();
+
+            // 添加历史记录（转换为新格式兼容旧格式）
+            addToHistory({
+                icon: FATE_LEVELS[chosen.fateLevel].icon,
+                title: chosen.fateLevel === 'drama' ? '命运轮转' :
+                       chosen.fateLevel === 'major' ? '大吉' :
+                       chosen.fateLevel === 'good' ? '中吉' :
+                       chosen.fateLevel === 'slight' ? '小吉' : '变卦',
+                desc: chosen.modifier ? `修饰: ${chosen.modifier.label}` : '',
+                luck: FATE_LEVELS[chosen.fateLevel].label,
+                luckClass: chosen.fateLevel === 'major' ? 'luck-legend' :
+                           chosen.fateLevel === 'good' ? 'luck-high' :
+                           chosen.fateLevel === 'reversal' ? 'luck-low' : 'luck-medium',
+                reward: finalReward
+            });
+
+            saveData();
+
+            // 检查是否选了最差的牌
+            const worstReward = Math.min(...fateCards.map(c => c.finalReward));
+            if (chosen.finalReward === worstReward) {
+                fateWorstStreak++;
+                if (fateWorstStreak >= 3) {
+                    fateNextFree = true; // 赌神眷顾
+                    showFateEventToast(FATE_EVENTS.god_favor);
+                    fateWorstStreak = 0;
+                }
+            } else {
+                fateWorstStreak = 0;
+            }
+
+            // 2秒后恢复待命状态
+            setTimeout(() => {
+                document.getElementById('fateTable').style.display = 'none';
+                document.getElementById('cardIdle').style.display = 'flex';
+                isShuffling = false;
+                document.getElementById('drawBtn').disabled = false;
+            }, 2000);
+        }
+
+        /**
+         * 检查特殊事件
+         */
+        function checkFateEvent(card, reward) {
+            // 皮尔卡松降临：大吉 + 双倍
+            if (card.fateLevel === 'major' && card.modifier && card.modifier.id === 'double') {
+                const bonus = 30;
+                chips += bonus;
+                totalChipsEarned += bonus;
+                updateChipDisplay(true, true, bonus);
+                card.event = 'pierce_appear';
+                setTimeout(() => showFateEventToast(FATE_EVENTS.pierce_appear), 500);
+            }
+
+            // 黑天鹅：变卦 + 破产
+            if (card.fateLevel === 'reversal' && card.modifier && card.modifier.id === 'bankrupt') {
+                const loss = Math.floor(chips * 0.5);
+                chips = Math.max(0, chips - loss);
+                updateChipDisplay(true, true, -loss);
+                card.event = 'black_swan';
+                setTimeout(() => showFateEventToast(FATE_EVENTS.black_swan), 500);
+            }
+
+            // 命运轮转：戏剧牌
+            if (card.fateLevel === 'drama') {
+                card.event = 'fate_wheel';
+                setTimeout(() => showFateEventToast(FATE_EVENTS.fate_wheel), 500);
+            }
+        }
+
+        /**
+         * 应用修饰效果
+         */
+        function applyFateModifierEffect(card) {
+            if (!card.modifier) return;
+
+            switch (card.modifier.id) {
+                case 'immune':
+                    // 下次超时不中断连击
+                    consecutiveDraws = 0; // 重置让下次从0开始
+                    lastDrawTime = 0;
+                    break;
+                case 'chain':
+                    if (Math.random() < 0.5) {
+                        const chainReward = 5 + Math.floor(Math.random() * 11);
+                        chips += chainReward;
+                        totalChipsEarned += chainReward;
+                        updateChipDisplay(true, true, chainReward);
+                        showTooltip(`连锁触发！额外 +${chainReward} 筹码`, 'success', 2500);
+                    }
+                    break;
+                case 'lock':
+                    fateNextFree = true;
+                    showTooltip('锁定！下次抽卡免费', 'success', 2500);
+                    break;
+                case 'curse':
+                    fateNextDoubleCost = true;
+                    showTooltip('诅咒...下次抽卡花费翻倍', 'error', 2500);
+                    break;
+            }
+        }
+
+        /**
+         * 显示事件提示
+         */
+        function showFateEventToast(event) {
+            const existing = document.querySelector('.fate-event-toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'fate-event-toast';
+            toast.innerHTML = `
+                <div class="event-icon">${event.icon}</div>
+                <div class="event-title">${event.title}</div>
+                <div class="event-desc">${event.desc}</div>
+            `;
+            document.body.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, 2500);
+        }
+
+        /**
+         * 超时自动翻牌
+         */
+        function fateAutoPick() {
+            if (!fateTableActive) return;
+            // 随机选一张未翻开的
+            const available = fateCards.filter(c => !c.revealed);
+            if (available.length > 0) {
+                handleFateCardClick(available[Math.floor(Math.random() * available.length)].position);
+            }
+        }
+
         // ==================== 游戏状态变量 ====================
         let isShuffling = false;
         let history = [];
@@ -2329,7 +2781,19 @@
         }
 
         function drawCard() {
-            const drawCost = 7;
+            let drawCost = 7;
+
+            // 应用诅咒修饰
+            if (fateNextDoubleCost) {
+                drawCost *= 2;
+                fateNextDoubleCost = false;
+            }
+
+            // 应用锁定修饰（免费）
+            if (fateNextFree) {
+                drawCost = 0;
+                fateNextFree = false;
+            }
 
             if (chips < drawCost) {
                 showTooltip('筹码不足！请等待发薪日补充筹码。', 'error', 3500);
@@ -2339,117 +2803,59 @@
             if (isShuffling) return;
             isShuffling = true;
 
-            // 扣除筹码（显示 -5 浮动动画）
-            const oldChips = chips;
-            chips -= drawCost;
-            updateChipDisplay(true, true, -drawCost);
+            // 扣除筹码
+            if (drawCost > 0) {
+                chips -= drawCost;
+                updateChipDisplay(true, true, -drawCost);
+            }
 
             // 增加连击次数
             addCombo();
 
-            const cardElement = document.getElementById('card');
-            const drawBtn = document.getElementById('drawBtn');
-
-            // 确保 AudioContext 已初始化（浏览器需要用户交互后才能播放音频）
+            // 确保 AudioContext 已初始化
             if (getAudioContext().state === 'suspended') {
                 getAudioContext().resume();
             }
 
             playSound('click');
-            drawBtn.disabled = true;
-            cardElement.classList.add('shuffling');
+            document.getElementById('drawBtn').disabled = true;
 
-            // 检查是否使用加速卡
-            const shuffleIntervalTime = accelerateCount > 0 ? 75 : 150;
-            if (accelerateCount > 0) {
-                accelerateCount--;
-                updateShopItems();
+            // 切换到牌桌视图
+            document.getElementById('cardIdle').style.display = 'none';
+            document.getElementById('fateTable').style.display = 'flex';
+
+            // 生成5张牌
+            fateCards = generateFateTable();
+            renderFateTable();
+
+            // 幸运符效果：排除1张最差的牌（翻面显示但不参与选择）
+            if (luckyCharmActive) {
+                luckyCharmActive = false;
+                // 找到基础奖励最低的牌并自动翻开
+                let worstIdx = 0;
+                for (let i = 1; i < fateCards.length; i++) {
+                    if (fateCards[i].baseReward < fateCards[worstIdx].baseReward) {
+                        worstIdx = i;
+                    }
+                }
+                // 延迟翻开最差牌
+                setTimeout(() => {
+                    const cardEl = document.querySelectorAll('.fate-card')[worstIdx];
+                    cardEl.classList.add('flipped', 'fate-card-revealed', 'disabled');
+                    fateCards[worstIdx].revealed = true;
+                    fateCards[worstIdx].finalReward = calculateFinalReward(fateCards[worstIdx], fateCards);
+                    const rewardEl = document.getElementById(`fateReward${worstIdx}`);
+                    rewardEl.textContent = fateCards[worstIdx].finalReward >= 0
+                        ? `+${fateCards[worstIdx].finalReward}`
+                        : `${fateCards[worstIdx].finalReward}`;
+                    rewardEl.style.color = fateCards[worstIdx].finalReward >= 0 ? '#00ff00' : '#ff4444';
+                    showTooltip('幸运符排除了最差的牌！', 'success', 2000);
+                }, 600);
             }
 
-            let shuffleCount = 0;
-            const maxShuffles = 20;
-            const shuffleInterval = setInterval(() => {
-                const tempCard = luckCards[Math.floor(Math.random() * luckCards.length)];
-                updateCardDisplay(tempCard, true);
-                shuffleCount++;
-
-                // 播放洗牌音效
-                if (shuffleCount % 2 === 0) {
-                    playSound('shuffle');
-                }
-
-                if (shuffleCount >= maxShuffles) {
-                    clearInterval(shuffleInterval);
-                    const finalCard = getRandomCard();
-                    updateCardDisplay(finalCard, false);
-                    cardElement.classList.remove('shuffling');
-
-                    // 播放揭示音效
-                    playSound('reveal');
-
-                    // 根据牌运播放不同音效
-                    setTimeout(() => {
-                        if (finalCard.luckClass === 'luck-legend') {
-                            playSound('legend');
-                        } else if (finalCard.luckClass === 'luck-high') {
-                            playSound('high');
-                        } else if (finalCard.luckClass === 'luck-medium') {
-                            playSound('medium');
-                        } else {
-                            playSound('low');
-                        }
-                    }, 300);
-
-                    // 奖励筹码（应用连抽倍数，显示 +X 浮动动画）
-                    const finalReward = Math.floor(finalCard.reward * comboMultiplier);
-                    chips += finalReward;
-                    totalChipsEarned += finalReward;
-                    updateChipDisplay(true, true, finalReward);
-
-                    // 显示奖励提示（如果有连击加成）
-                    if (comboMultiplier > 1) {
-                        showTooltip(`连击奖励：${finalCard.reward} × ${comboMultiplier} = ${finalReward}筹码！`, 'success', 3500);
-                    }
-
-                    // 更新抽卡统计
-                    totalDraws++;
-
-                    // 检查传说王牌
-                    if (finalCard.luck === '终极王牌') {
-                        unlockLegendHunter();
-                    }
-
-                    // 更新连续高运次数
-                    updateConsecutiveHighLuck(finalCard.luck);
-
-                    // 检查所有成就
-                    checkAchievements();
-
-                    drawBtn.disabled = false;
-
-                    addToHistory(finalCard);
-                    isShuffling = false;
-
-                    // 重置一次性道具效果（幸运符、透视眼镜均为一次性）
-                    if (luckyCharmActive) {
-                        luckyCharmActive = false;
-                    }
-                    // xrayActive 由 setTimeout 自动重置
-
-                    // 抽卡完全结束后保存数据
-                    saveData();
-
-                    // 2 秒后自动重置卡片
-                    setTimeout(() => {
-                        const cardElement = document.getElementById('card');
-                        cardElement.innerHTML = `
-                            <div class="card-icon">🎴</div>
-                            <div class="card-title">准备就绪</div>
-                            <div class="card-desc">点击按钮抽取你的今日牌运<br><span style="color: #ffd700; font-size: 0.85em;">消耗：7 筹码</span></div>
-                        `;
-                    }, 2000);
-                }
-            }, shuffleIntervalTime);
+            // 启动牌桌
+            fateTableActive = true;
+            startFateTimer(5, fateAutoPick);
         }
 
         function updateCardDisplay(card, isShuffling) {
@@ -3288,6 +3694,7 @@
     
         // 全局函数（供HTML中的onclick调用）
         window.drawCard = drawCard;
+        window.handleFateCardClick = handleFateCardClick;
         window.closeAchievements = closeAchievements;
         window.openInventory = openInventory;
         window.closeInventory = closeInventory;

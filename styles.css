@@ -230,11 +230,13 @@
         }
 
         .card-area {
-            margin: 30px 0;
-            min-height: 200px;
+            margin: 20px 0;
+            min-height: 260px;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+            position: relative;
         }
 
         .card {
@@ -325,6 +327,341 @@
         .luck-high { color: #00ff00; text-shadow: 0 0 10px rgba(0, 255, 0, 0.5); }
         .luck-medium { color: var(--skin-accent); text-shadow: 0 0 10px rgba(var(--skin-accent-rgb), 0.5); }
         .luck-low { color: #ff6b6b; text-shadow: 0 0 10px rgba(255, 107, 107, 0.5); }
+
+        /* ==================== 命运牌局 ==================== */
+
+        /* 待命卡牌 */
+        .card-idle {
+            width: 200px;
+            height: 280px;
+            background: linear-gradient(145deg, #2a2a4a, #1a1a3a);
+            border-radius: 15px;
+            border: 3px solid #ffd700;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5),
+                        inset 0 0 30px rgba(255, 215, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-idle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        /* 牌桌容器 */
+        .fate-table {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* 倒计时环 */
+        .fate-timer {
+            position: relative;
+            width: 40px;
+            height: 40px;
+        }
+
+        .fate-timer-ring {
+            width: 40px;
+            height: 40px;
+            transform: rotate(-90deg);
+        }
+
+        .fate-timer-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 3;
+        }
+
+        .fate-timer-fill {
+            fill: none;
+            stroke: var(--skin-accent);
+            stroke-width: 3;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 0;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s linear;
+        }
+
+        .fate-timer-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--skin-accent);
+        }
+
+        /* 5张牌的容器 */
+        .fate-slots {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: nowrap;
+        }
+
+        /* 单张命运牌 */
+        .fate-card {
+            width: 100px;
+            height: 150px;
+            perspective: 600px;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+
+        .fate-card:hover:not(.fate-card-revealed):not(.fate-card-disabled) {
+            transform: translateY(-6px);
+        }
+
+        .fate-card.disabled {
+            cursor: default;
+        }
+
+        .fate-card-inner {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s ease;
+        }
+
+        .fate-card.flipped .fate-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .fate-card-front,
+        .fate-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        /* 牌背面 */
+        .fate-card-front {
+            background: linear-gradient(135deg, #1a1a3a, #2a2a5a);
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .fate-card-front::after {
+            content: '🎴';
+            font-size: 2.5em;
+            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.4));
+        }
+
+        /* 悬浮动画（未翻开时） */
+        .fate-card:not(.flipped) .fate-card-front {
+            animation: fate-float 2.5s ease-in-out infinite;
+        }
+
+        .fate-card:nth-child(2):not(.flipped) .fate-card-front { animation-delay: 0.3s; }
+        .fate-card:nth-child(3):not(.flipped) .fate-card-front { animation-delay: 0.6s; }
+        .fate-card:nth-child(4):not(.flipped) .fate-card-front { animation-delay: 0.9s; }
+        .fate-card:nth-child(5):not(.flipped) .fate-card-front { animation-delay: 1.2s; }
+
+        @keyframes fate-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* 牌正面（翻面后） */
+        .fate-card-back {
+            transform: rotateY(180deg);
+            text-align: center;
+            overflow: hidden;
+        }
+
+        /* 各命运层级颜色 */
+        .fate-level-major .fate-card-back {
+            background: linear-gradient(145deg, #3a2800, #1a1400);
+            border: 2px solid #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .fate-level-good .fate-card-back {
+            background: linear-gradient(145deg, #1a2a3a, #0f1a25);
+            border: 2px solid #87ceeb;
+            box-shadow: 0 0 15px rgba(135, 206, 235, 0.3);
+        }
+
+        .fate-level-slight .fate-card-back {
+            background: linear-gradient(145deg, #1a1a2e, #12122a);
+            border: 2px solid rgba(150, 150, 200, 0.4);
+            box-shadow: 0 0 10px rgba(150, 150, 200, 0.2);
+        }
+
+        .fate-level-reversal .fate-card-back {
+            background: linear-gradient(145deg, #2a0f0f, #1a0808);
+            border: 2px solid #e74c3c;
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .fate-level-drama .fate-card-back {
+            background: linear-gradient(145deg, #2a1a3a, #1a0f25);
+            border: 2px solid #9b59b6;
+            box-shadow: 0 0 15px rgba(155, 89, 182, 0.4);
+            animation: drama-shimmer 1.5s linear infinite;
+        }
+
+        @keyframes drama-shimmer {
+            0% { border-color: #e74c3c; box-shadow: 0 0 15px rgba(231, 76, 60, 0.4); }
+            33% { border-color: #ffd700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
+            66% { border-color: #2ecc71; box-shadow: 0 0 15px rgba(46, 204, 113, 0.4); }
+            100% { border-color: #e74c3c; box-shadow: 0 0 15px rgba(231, 76, 60, 0.4); }
+        }
+
+        /* 牌面内容 */
+        .fate-card-icon {
+            font-size: 1.8em;
+            margin-bottom: 4px;
+        }
+
+        .fate-card-label {
+            font-size: 0.75em;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+
+        .fate-card-reward {
+            font-size: 1em;
+            font-weight: bold;
+        }
+
+        .fate-card-modifier {
+            font-size: 0.65em;
+            margin-top: 2px;
+            opacity: 0.8;
+        }
+
+        /* 命运层级文字颜色 */
+        .fate-level-major .fate-card-label { color: #ffd700; }
+        .fate-level-major .fate-card-reward { color: #ffd700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.5); }
+
+        .fate-level-good .fate-card-label { color: #87ceeb; }
+        .fate-level-good .fate-card-reward { color: #87ceeb; }
+
+        .fate-level-slight .fate-card-label { color: #9999cc; }
+        .fate-level-slight .fate-card-reward { color: #9999cc; }
+
+        .fate-level-reversal .fate-card-label { color: #e74c3c; }
+        .fate-level-reversal .fate-card-reward { color: #ff6b6b; }
+
+        .fate-level-drama .fate-card-label { color: #bb77dd; }
+        .fate-level-drama .fate-card-reward { color: #bb77dd; }
+
+        /* 选中的牌高亮 */
+        .fate-card.fate-card-chosen .fate-card-back {
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.7) !important;
+            transform: scale(1.08);
+        }
+
+        .fate-card.fate-card-chosen {
+            z-index: 10;
+        }
+
+        /* 揭示其他牌时的暗淡效果 */
+        .fate-card.fate-card-revealed {
+            opacity: 0.7;
+            transform: scale(0.95);
+        }
+
+        /* 修饰标签样式 */
+        .fate-mod-double { color: #ffd700; }
+        .fate-mod-triple { color: #ff8c00; }
+        .fate-mod-flip { color: #e74c3c; }
+        .fate-mod-immune { color: #2ecc71; }
+        .fate-mod-chain { color: #00bcd4; }
+        .fate-mod-bankrupt { color: #ff0000; }
+        .fate-mod-absorb { color: #9b59b6; }
+        .fate-mod-lock { color: #3498db; }
+        .fate-mod-curse { color: #e67e22; }
+
+        /* 事件弹窗提示 */
+        .fate-event-toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.5);
+            background: linear-gradient(135deg, rgba(10, 10, 20, 0.97), rgba(5, 5, 15, 0.98));
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            padding: 20px 30px;
+            z-index: 5000;
+            text-align: center;
+            opacity: 0;
+            transition: all 0.4s ease;
+            pointer-events: none;
+        }
+
+        .fate-event-toast.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .fate-event-toast .event-icon {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+        }
+
+        .fate-event-toast .event-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 4px;
+        }
+
+        .fate-event-toast .event-desc {
+            font-size: 0.9em;
+            color: #ccc;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 600px) {
+            .fate-card {
+                width: 62px;
+                height: 100px;
+            }
+            .fate-slots {
+                gap: 5px;
+            }
+            .fate-card-icon { font-size: 1.4em; margin-bottom: 2px; }
+            .fate-card-label { font-size: 0.6em; }
+            .fate-card-reward { font-size: 0.8em; }
+            .fate-card-modifier { font-size: 0.55em; }
+        }
+
+        @media (max-width: 400px) {
+            .fate-card {
+                width: 54px;
+                height: 86px;
+            }
+            .fate-slots {
+                gap: 3px;
+            }
+        }
 
         .btn {
             background: var(--skin-button-gradient);
