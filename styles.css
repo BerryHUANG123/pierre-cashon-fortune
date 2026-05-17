@@ -573,19 +573,25 @@
         .fate-level-drama .fate-card-reward { color: #bb77dd; }
 
         /* 选中的牌高亮 */
-        .fate-card.fate-card-chosen .fate-card-back {
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.7) !important;
+        .fate-card.fate-card-chosen {
+            z-index: 10;
+        }
+
+        .fate-card.fate-card-chosen.flipped .fate-card-inner {
             transform: rotateY(180deg) scale(1.08);
         }
 
-        .fate-card.fate-card-chosen {
-            z-index: 10;
+        .fate-card.fate-card-chosen .fate-card-back {
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.7) !important;
         }
 
         /* 揭示其他牌时的暗淡效果 */
         .fate-card.fate-card-revealed {
             opacity: 0.7;
-            transform: scale(0.95);
+        }
+
+        .fate-card.fate-card-revealed.flipped .fate-card-inner {
+            transform: rotateY(180deg) scale(0.95);
         }
 
         /* 修饰标签样式 */
