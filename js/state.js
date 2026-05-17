@@ -119,11 +119,11 @@ function initShopItems() {
 
     // 自动生成皮肤商品
     const skinItems = [];
-    const skinOrder = ['royal-purple', 'cyber-neon', 'dark-ghost', 'golden-empire',
-        'aurora-dream', 'fire-hell', 'diamond-luxury', 'cosmic-void',
-        'venom-toxic', 'plasma-energy', 'inferno-blaze',
-        'ocean-abyss', 'forest-mystic', 'desert-sands',
-        'volcano-magma', 'storm-lightning', 'crystal-ice', 'nebula-cosmic'];
+    const skinOrder = ['royal-purple', 'cyber-neon', 'dark-ghost', 'aurora-dream', 'fire-hell',
+        'ocean-abyss', 'forest-mystic', 'desert-sands', 'venom-toxic',
+        'volcano-magma', 'storm-lightning', 'crystal-ice', 'golden-empire',
+        'nebula-cosmic', 'cosmic-void', 'plasma-energy',
+        'diamond-luxury', 'inferno-blaze', 'pierre-cashon-original'];
     skinOrder.forEach(skinId => {
         if (SKINS_DATA[skinId]) {
             const def = SKINS_DATA[skinId];

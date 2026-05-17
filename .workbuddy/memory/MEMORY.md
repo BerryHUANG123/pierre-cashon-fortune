@@ -20,3 +20,15 @@
 - inventory 使用独立字段存储堆叠型消耗品
 - 数据通过 localStorage 持久化
 - 正在基于 Supabase 构建实时云端同步能力
+
+## 代码架构（6 模块）
+- 加载顺序: data.js → state.js → ui.js → engine.js → features.js → main.js
+- **数据驱动模式**：所有静态内容定义集中在 data.js，state.js 通过 init 函数生成运行时对象
+  - 新增皮肤：只需在 SKINS_DATA 添加条目（含 price/tier），系统自动注册 ownedSkins 和商店商品
+  - 新增成就：只需在 ACHIEVEMENTS_DATA 添加条目（含 target 或 streakTarget），initAchievements 自动处理状态
+  - 新增每日任务：只需在 DAILY_TASKS_TEMPLATE 添加条目，createFreshDailyTasks 自动生成实例
+  - init 函数：initOwnedSkins/initSkins/initShopItems/initAchievements/createFreshDailyTasks/createFreshDailyChallenges
+- 语法检查需用 `NODE_OPTIONS="" node --check`（因环境变量冲突）
+
+## 待清理
+- game.js.bak 仍在项目根目录，确认模块化版本稳定后可删除

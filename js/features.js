@@ -367,12 +367,12 @@ function updateComboSystem() {
 
     if (consecutiveDraws >= 10) {
         comboLevel = 3;
-        comboMultiplier = 1.6;
-        comboRareBonus = 30;
-    } else if (consecutiveDraws >= 5) {
-        comboLevel = 2;
         comboMultiplier = 2;
         comboRareBonus = 50;
+    } else if (consecutiveDraws >= 5) {
+        comboLevel = 2;
+        comboMultiplier = 1.6;
+        comboRareBonus = 30;
     } else if (consecutiveDraws >= 3) {
         comboLevel = 1;
         comboMultiplier = 1.3;
